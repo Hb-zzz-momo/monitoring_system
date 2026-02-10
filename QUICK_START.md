@@ -3,7 +3,7 @@
 ## 运行应用
 
 ### 1. 安装 Flutter
-如果还没有安装 Flutter，请访问：https://flutter.dev/docs/get-started/install
+如果还没有安装 Flutter, 请访问：https://flutter.dev/docs/get-started/install
 
 ### 2. 检查环境
 ```bash
