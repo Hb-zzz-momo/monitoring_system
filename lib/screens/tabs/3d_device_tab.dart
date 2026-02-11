@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../mock_data/mock_data.dart';
+import '../../routes/app_routes.dart';
 
 class ThreeDDeviceTab extends StatefulWidget {
   const ThreeDDeviceTab({super.key});
@@ -28,36 +29,75 @@ class _ThreeDDeviceTabState extends State<ThreeDDeviceTab> {
               Expanded(
                 flex: 55,
                 child: Container(
-                  color: Colors.grey[300],
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.grey[800]!,
+                        Colors.grey[600]!,
+                      ],
+                    ),
+                  ),
                   child: Stack(
                     children: [
-                      // 3D placeholder
+                      // 3D placeholder with grid pattern
                       Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.view_in_ar,
-                              size: 80,
-                              color: AppColors.subText,
+                            // 3D cube icon with shadow
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.view_in_ar,
+                                size: 100,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
                             Text(
-                              '3D Model Placeholder',
+                              '3D 模型视图',
                               style: TextStyle(
-                                fontSize: 16,
-                                color: AppColors.subText,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withOpacity(0.9),
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '点击部件查看详情',
+                              '拖动旋转 | 滚轮缩放 | 点击部件查看详情',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.subText,
+                                color: Colors.white.withOpacity(0.6),
                               ),
                             ),
+                            const SizedBox(height: 24),
+                            // Simulated clickable components
+                            Wrap(
+                              spacing: 12,
+                              children: [
+                                _buildComponentChip('主轴承', Colors.orange),
+                                _buildComponentChip('电机', Colors.blue),
+                                _buildComponentChip('传动轴', Colors.green),
+                              ],
+                            ),
                           ],
+                        ),
+                      ),
+                      // Grid overlay for 3D feel
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: GridPainter(),
                         ),
                       ),
                       // Top toolbar
@@ -207,52 +247,60 @@ class _ThreeDDeviceTabState extends State<ThreeDDeviceTab> {
                                 ),
                                 const SizedBox(height: 12),
                                 ...MockData.alarms.take(2).map((alarm) {
-                                  return Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 8),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 3,
-                                          height: 24,
-                                          decoration: BoxDecoration(
-                                            color: alarm['level'] == 'danger'
-                                                ? AppColors.danger
-                                                : AppColors.warning,
-                                            borderRadius:
-                                                BorderRadius.circular(2),
+                                  return InkWell(
+                                    onTap: () {
+                                      Navigator.of(context).pushNamed(
+                                        AppRoutes.alarmDetail,
+                                        arguments: {'alarmId': alarm['id']},
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 3,
+                                            height: 24,
+                                            decoration: BoxDecoration(
+                                              color: alarm['level'] == 'danger'
+                                                  ? AppColors.danger
+                                                  : AppColors.warning,
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                alarm['title'],
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight:
-                                                      FontWeight.w600,
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  alarm['title'],
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                  ),
                                                 ),
-                                              ),
-                                              Text(
-                                                alarm['time'],
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: AppColors.subText,
+                                                Text(
+                                                  alarm['time'],
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: AppColors.subText,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        Icon(
-                                          Icons.chevron_right,
-                                          size: 16,
-                                          color: AppColors.subText,
-                                        ),
-                                      ],
+                                          Icon(
+                                            Icons.chevron_right,
+                                            size: 16,
+                                            color: AppColors.subText,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   );
                                 }),
@@ -575,4 +623,80 @@ class _ThreeDDeviceTabState extends State<ThreeDDeviceTab> {
       ],
     );
   }
+
+  Widget _buildComponentChip(String label, Color color) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showDrawer = true;
+          _selectedComponent = MockData.components[0];
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.5), width: 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Custom painter for 3D grid effect
+class GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    // Draw vertical lines
+    for (int i = 0; i < 10; i++) {
+      final x = size.width / 10 * i;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
+
+    // Draw horizontal lines
+    for (int i = 0; i < 10; i++) {
+      final y = size.height / 10 * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 }

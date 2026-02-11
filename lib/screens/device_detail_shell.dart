@@ -1,3 +1,4 @@
+import 'dart:math' show sin, cos;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../components/common_widgets.dart';
@@ -345,30 +346,67 @@ class _DeviceChartsViewState extends State<DeviceChartsView> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.divider),
                   ),
-                  child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.show_chart,
-                          size: 60,
-                          color: AppColors.subText,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '实时曲线',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.text,
+                              ),
+                            ),
+                            Text(
+                              '最近30分钟',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.subText,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'Line Chart Placeholder',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppColors.subText,
+                        Expanded(
+                          child: CustomPaint(
+                            painter: LineChartPainter(
+                              metrics: _selectedMetrics,
+                            ),
+                            child: Container(),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          '显示: ${_selectedMetrics.join(', ')}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.subText,
-                          ),
+                        // Legend
+                        Wrap(
+                          spacing: 16,
+                          children: _selectedMetrics.map((metric) {
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 3,
+                                  decoration: BoxDecoration(
+                                    color: _getMetricColor(metric),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  metric,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.subText,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
                         ),
                       ],
                     ),
@@ -442,6 +480,150 @@ class _DeviceChartsViewState extends State<DeviceChartsView> {
       ),
     );
   }
+
+  Color _getMetricColor(String metric) {
+    switch (metric) {
+      case '温度':
+        return AppColors.warning;
+      case '电压':
+        return AppColors.info;
+      case '电流':
+        return AppColors.success;
+      case '功率':
+        return AppColors.primary;
+      default:
+        return AppColors.text;
+    }
+  }
+}
+
+// Custom line chart painter with virtual data
+class LineChartPainter extends CustomPainter {
+  final List<String> metrics;
+
+  LineChartPainter({required this.metrics});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint = Paint()
+      ..color = AppColors.divider
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    // Draw grid lines
+    for (int i = 0; i <= 5; i++) {
+      final y = size.height / 5 * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        gridPaint,
+      );
+    }
+
+    for (int i = 0; i <= 6; i++) {
+      final x = size.width / 6 * i;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        gridPaint,
+      );
+    }
+
+    // Generate and draw data for each metric
+    const dataPoints = 30;
+    for (int metricIndex = 0; metricIndex < metrics.length; metricIndex++) {
+      final metric = metrics[metricIndex];
+      final color = _getMetricColorForPaint(metric);
+      final linePaint = Paint()
+        ..color = color
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      final path = Path();
+      
+      // Generate virtual data points with some variation
+      final baseValue = _getBaseValue(metric);
+      final amplitude = _getAmplitude(metric);
+      
+      for (int i = 0; i < dataPoints; i++) {
+        final x = size.width / (dataPoints - 1) * i;
+        // Create a sine wave with some randomness for realistic look
+        final noise = (i * 0.3).sin() * 0.3 + (i * 0.7).cos() * 0.2;
+        final normalizedValue = 0.5 + (i / dataPoints * 0.3).sin() * 0.3 + noise * amplitude;
+        final y = size.height - (normalizedValue * size.height);
+        
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+
+      canvas.drawPath(path, linePaint);
+
+      // Draw dots on data points
+      final dotPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < dataPoints; i += 5) {
+        final x = size.width / (dataPoints - 1) * i;
+        final noise = (i * 0.3).sin() * 0.3 + (i * 0.7).cos() * 0.2;
+        final normalizedValue = 0.5 + (i / dataPoints * 0.3).sin() * 0.3 + noise * amplitude;
+        final y = size.height - (normalizedValue * size.height);
+        canvas.drawCircle(Offset(x, y), 3, dotPaint);
+      }
+    }
+  }
+
+  Color _getMetricColorForPaint(String metric) {
+    switch (metric) {
+      case '温度':
+        return AppColors.warning;
+      case '电压':
+        return AppColors.info;
+      case '电流':
+        return AppColors.success;
+      case '功率':
+        return AppColors.primary;
+      default:
+        return AppColors.text;
+    }
+  }
+
+  double _getBaseValue(String metric) {
+    switch (metric) {
+      case '温度':
+        return 42.0;
+      case '电压':
+        return 220.0;
+      case '电流':
+        return 15.0;
+      case '功率':
+        return 3.3;
+      default:
+        return 50.0;
+    }
+  }
+
+  double _getAmplitude(String metric) {
+    switch (metric) {
+      case '温度':
+        return 0.15;
+      case '电压':
+        return 0.10;
+      case '电流':
+        return 0.20;
+      case '功率':
+        return 0.18;
+      default:
+        return 0.15;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 // Health Lifespan Tab in device detail
