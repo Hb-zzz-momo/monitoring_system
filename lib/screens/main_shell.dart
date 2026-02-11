@@ -23,11 +23,17 @@ class _MainShellState extends State<MainShell> {
     _currentIndex = widget.initialIndex;
   }
 
-  final List<Widget> _tabs = const [
-    ThreeDDeviceTab(),
-    RealtimeTab(),
-    AlarmWorkTab(),
-    ProfileTab(),
+  void _switchToTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  List<Widget> get _tabs => [
+    const ThreeDDeviceTab(),
+    const RealtimeTab(),
+    const AlarmWorkTab(),
+    ProfileTab(onSwitchTab: _switchToTab),
   ];
 
   @override

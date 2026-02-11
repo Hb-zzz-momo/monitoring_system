@@ -18,6 +18,7 @@ class _RealtimeTabState extends State<RealtimeTab> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('实时监测'),
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         child: Column(

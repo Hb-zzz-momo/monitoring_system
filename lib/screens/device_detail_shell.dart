@@ -24,7 +24,7 @@ class _DeviceDetailShellState extends State<DeviceDetailShell>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -61,6 +61,7 @@ class _DeviceDetailShellState extends State<DeviceDetailShell>
             Tab(text: '3D视图'),
             Tab(text: '监测总览'),
             Tab(text: '曲线'),
+            Tab(text: '健康寿命'),
           ],
         ),
       ),
@@ -70,6 +71,7 @@ class _DeviceDetailShellState extends State<DeviceDetailShell>
           DeviceThreeDView(),
           DeviceRealtimeView(),
           DeviceChartsView(),
+          DeviceHealthLifespanView(),
         ],
       ),
     );
@@ -440,4 +442,361 @@ class _DeviceChartsViewState extends State<DeviceChartsView> {
       ),
     );
   }
+}
+
+// Health Lifespan Tab in device detail
+class DeviceHealthLifespanView extends StatelessWidget {
+  const DeviceHealthLifespanView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Overall health card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '整体健康度',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '78%',
+                              style: TextStyle(
+                                fontSize: 42,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.success,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '状态良好',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.subText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 48,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  LinearProgressIndicator(
+                    value: 0.78,
+                    backgroundColor: AppColors.divider,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Expected lifespan
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '预期剩余寿命',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        '240',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '天',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.subText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '预测区间: 200-280 天',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.subText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '预计到期日: 2024-09-07',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.subText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Component health list
+          const Text(
+            '部件健康详情',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...MockData.components.map((component) {
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            component['name'],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getHealthColor(component['healthIndex'])
+                                .withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '${(component['healthIndex'] * 100).toInt()}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _getHealthColor(component['healthIndex']),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: component['healthIndex'],
+                      backgroundColor: AppColors.divider,
+                      color: _getHealthColor(component['healthIndex']),
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '剩余寿命',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.subText,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${component['rul']} 天',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '预测区间',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.subText,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${component['rulRange']} 天',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {},
+                          child: const Text(
+                            '查看详情',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          // Maintenance recommendations
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.lightbulb_outline,
+                        size: 20,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '维护建议',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildRecommendationItem(
+                    '建议在未来30天内安排主轴承维护',
+                    Icons.build,
+                    AppColors.warning,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildRecommendationItem(
+                    '持续监控温度变化趋势',
+                    Icons.thermostat,
+                    AppColors.info,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildRecommendationItem(
+                    '准备相关备件',
+                    Icons.inventory,
+                    AppColors.success,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationItem(String text, IconData icon, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getHealthColor(double healthIndex) {
+    if (healthIndex >= 0.8) {
+      return AppColors.success;
+    } else if (healthIndex >= 0.6) {
+      return AppColors.warning;
+    } else {
+      return AppColors.danger;
+    }
+  }
+}
 }

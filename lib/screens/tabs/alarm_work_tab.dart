@@ -32,6 +32,7 @@ class _AlarmWorkTabState extends State<AlarmWorkTab>
     return Scaffold(
       appBar: AppBar(
         title: const Text('告警/工单'),
+        automaticallyImplyLeading: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(

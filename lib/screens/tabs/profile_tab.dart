@@ -3,7 +3,9 @@ import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 
 class ProfileTab extends StatefulWidget {
-  const ProfileTab({super.key});
+  final void Function(int)? onSwitchTab;
+  
+  const ProfileTab({super.key, this.onSwitchTab});
 
   @override
   State<ProfileTab> createState() => _ProfileTabState();
@@ -17,6 +19,7 @@ class _ProfileTabState extends State<ProfileTab> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的'),
+        automaticallyImplyLeading: false,
       ),
       body: ListView(
         children: [
@@ -115,7 +118,10 @@ class _ProfileTabState extends State<ProfileTab> {
                   title: '已绑定设备',
                   subtitle: '4台设备',
                   onTap: () {
-                    Navigator.of(context).pushNamed(AppRoutes.deviceList);
+                    // Switch to device tab (3D Device Tab) instead of pushing new page
+                    if (widget.onSwitchTab != null) {
+                      widget.onSwitchTab!(0);
+                    }
                   },
                 ),
               ],

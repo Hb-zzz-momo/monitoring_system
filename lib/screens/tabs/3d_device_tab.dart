@@ -18,6 +18,7 @@ class _ThreeDDeviceTabState extends State<ThreeDDeviceTab> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('3D设备视图'),
+        automaticallyImplyLeading: false,
       ),
       body: Stack(
         children: [
