@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import 'tabs/3d_device_tab.dart';
-import 'tabs/realtime_tab.dart';
 import 'tabs/alarm_work_tab.dart';
 import 'tabs/profile_tab.dart';
+import 'device_list_screen.dart';
 
 class MainShell extends StatefulWidget {
   final int initialIndex;
@@ -23,11 +22,14 @@ class _MainShellState extends State<MainShell> {
     _currentIndex = widget.initialIndex;
   }
 
-  final List<Widget> _tabs = const [
-    ThreeDDeviceTab(),
-    RealtimeTab(),
-    AlarmWorkTab(),
-    ProfileTab(),
+  void _switchToTab(int index) {
+    setState(() => _currentIndex = index);
+  }
+
+  late final List<Widget> _tabs = [
+    const DeviceListScreen(),
+    const AlarmWorkTab(),
+    ProfileTab(onSwitchToDevices: () => _switchToTab(0)),
   ];
 
   @override
@@ -49,12 +51,8 @@ class _MainShellState extends State<MainShell> {
         unselectedItemColor: AppColors.subText,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.view_in_ar),
-            label: '3D设备',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: '实时监测',
+            icon: Icon(Icons.devices),
+            label: '设备',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),

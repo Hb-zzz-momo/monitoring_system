@@ -3,7 +3,9 @@ import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 
 class ProfileTab extends StatefulWidget {
-  const ProfileTab({super.key});
+  final VoidCallback? onSwitchToDevices;
+
+  const ProfileTab({super.key, this.onSwitchToDevices});
 
   @override
   State<ProfileTab> createState() => _ProfileTabState();
@@ -115,7 +117,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   title: '已绑定设备',
                   subtitle: '4台设备',
                   onTap: () {
-                    Navigator.of(context).pushNamed(AppRoutes.deviceList);
+                    widget.onSwitchToDevices?.call();
                   },
                 ),
               ],

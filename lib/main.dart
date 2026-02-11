@@ -3,6 +3,12 @@ import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+  };
+
   runApp(const MonitoringSystemApp());
 }
 

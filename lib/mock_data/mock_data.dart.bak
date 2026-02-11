@@ -1,5 +1,3 @@
-import 'dart:math';
-
 class MockData {
   static List<Map<String, dynamic>> devices = [
     {
@@ -9,8 +7,6 @@ class MockData {
       'lastUpdate': '2分钟前',
       'temperature': 42.3,
       'power': 3.2,
-      'healthIndex': 0.72,
-      'rul': 180,
     },
     {
       'id': '2',
@@ -19,8 +15,6 @@ class MockData {
       'lastUpdate': '5分钟前',
       'temperature': 38.7,
       'power': 2.8,
-      'healthIndex': 0.85,
-      'rul': 320,
     },
     {
       'id': '3',
@@ -29,8 +23,6 @@ class MockData {
       'lastUpdate': '2小时前',
       'temperature': 25.0,
       'power': 0.0,
-      'healthIndex': 0.95,
-      'rul': 500,
     },
     {
       'id': '4',
@@ -39,8 +31,6 @@ class MockData {
       'lastUpdate': '刚刚',
       'temperature': 45.2,
       'power': 4.1,
-      'healthIndex': 0.58,
-      'rul': 90,
     },
   ];
 
@@ -183,105 +173,51 @@ class MockData {
         {'name': '电流', 'value': 15.2, 'unit': 'A'},
       ],
     },
-    {
-      'id': '3',
-      'name': 'IGBT模块',
-      'healthIndex': 0.91,
-      'rul': 450,
-      'rulRange': '400-500',
-      'suggestions': [
-        '运行状态优秀',
-        '按计划巡检即可',
-      ],
-      'metrics': [
-        {'name': '结温', 'value': 85.3, 'unit': '℃'},
-        {'name': '栅极电压', 'value': 15.0, 'unit': 'V'},
-        {'name': '集电极电流', 'value': 120.0, 'unit': 'A'},
-      ],
-    },
   ];
 
   static List<Map<String, dynamic>> checklistItems = [
-    {'title': '检查轴承温度', 'description': '使用红外测温仪测量', 'checked': true},
-    {'title': '检查润滑情况', 'description': '确认润滑油充足', 'checked': true},
-    {'title': '检查振动情况', 'description': '使用振动仪测量', 'checked': false},
-    {'title': '更换轴承', 'description': '使用新备件更换', 'checked': false},
-    {'title': '运行测试', 'description': '确认设备正常运行', 'checked': false},
+    {
+      'title': '检查轴承温度',
+      'description': '使用红外测温仪测量',
+      'checked': true,
+    },
+    {
+      'title': '检查润滑情况',
+      'description': '确认润滑油充足',
+      'checked': true,
+    },
+    {
+      'title': '检查振动情况',
+      'description': '使用振动仪测量',
+      'checked': false,
+    },
+    {
+      'title': '更换轴承',
+      'description': '使用新备件更换',
+      'checked': false,
+    },
+    {
+      'title': '运行测试',
+      'description': '确认设备正常运行',
+      'checked': false,
+    },
   ];
 
   static List<Map<String, dynamic>> timeline = [
-    {'title': '工单创建', 'time': '2024-01-10 08:30', 'description': '系统自动创建工单'},
-    {'title': '已接单', 'time': '2024-01-10 09:00', 'description': '张工已接单'},
-    {'title': '处理中', 'time': '2024-01-10 10:00', 'description': '开始现场检查'},
+    {
+      'title': '工单创建',
+      'time': '2024-01-10 08:30',
+      'description': '系统自动创建工单',
+    },
+    {
+      'title': '已接单',
+      'time': '2024-01-10 09:00',
+      'description': '张工已接单',
+    },
+    {
+      'title': '处理中',
+      'time': '2024-01-10 10:00',
+      'description': '开始现场检查',
+    },
   ];
-
-  /// 生成虚拟曲线数据
-  static List<Map<String, double>> generateChartData(String metric, int points) {
-    final random = Random(metric.hashCode);
-    final List<Map<String, double>> data = [];
-
-    double baseValue;
-    double amplitude;
-
-    switch (metric) {
-      case '温度':
-        baseValue = 42.0;
-        amplitude = 5.0;
-        break;
-      case '电压':
-        baseValue = 220.0;
-        amplitude = 8.0;
-        break;
-      case '电流':
-        baseValue = 15.0;
-        amplitude = 3.0;
-        break;
-      case '功率':
-        baseValue = 3.3;
-        amplitude = 0.8;
-        break;
-      default:
-        baseValue = 50.0;
-        amplitude = 10.0;
-    }
-
-    for (int i = 0; i < points; i++) {
-      final noise = (random.nextDouble() - 0.5) * 2 * amplitude;
-      final trend = sin(i * 0.1) * amplitude * 0.5;
-      final value = baseValue + noise * 0.3 + trend;
-      data.add({
-        'x': i.toDouble(),
-        'y': double.parse(value.toStringAsFixed(1)),
-      });
-    }
-    return data;
-  }
-
-  /// 健康寿命页数据
-  static Map<String, dynamic> healthData = {
-    'overallHI': 0.78,
-    'overallRUL': 180,
-    'rulRange': '150-210',
-    'trend': 'declining',
-    'components': [
-      {'name': '主轴承', 'hi': 0.72, 'rul': 180, 'status': 'warning'},
-      {'name': '电机绕组', 'hi': 0.85, 'rul': 320, 'status': 'good'},
-      {'name': 'IGBT模块', 'hi': 0.91, 'rul': 450, 'status': 'good'},
-      {'name': '散热系统', 'hi': 0.65, 'rul': 120, 'status': 'warning'},
-      {'name': '电容组', 'hi': 0.95, 'rul': 600, 'status': 'good'},
-    ],
-    'predictions': [
-      {'date': '2024-03', 'hi': 0.75},
-      {'date': '2024-06', 'hi': 0.70},
-      {'date': '2024-09', 'hi': 0.63},
-      {'date': '2024-12', 'hi': 0.55},
-      {'date': '2025-03', 'hi': 0.45},
-    ],
-    'suggestions': [
-      '建议在30天内检查主轴承',
-      '散热系统需要清洁维护',
-      '按计划更换润滑油',
-      '准备轴承备件',
-    ],
-  };
 }

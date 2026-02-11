@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
       });
-      Navigator.of(context).pushReplacementNamed(AppRoutes.deviceList);
+      Navigator.of(context).pushReplacementNamed(AppRoutes.mainShell);
     }
   }
 
