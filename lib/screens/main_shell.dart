@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'tabs/alarm_work_tab.dart';
 import 'tabs/profile_tab.dart';
+import 'tabs/ai_tab.dart';
 import 'device_list_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -29,6 +30,7 @@ class _MainShellState extends State<MainShell> {
   late final List<Widget> _tabs = [
     const DeviceListScreen(),
     const AlarmWorkTab(),
+    const AiTab(),
     ProfileTab(onSwitchToDevices: () => _switchToTab(0)),
   ];
 
@@ -57,6 +59,10 @@ class _MainShellState extends State<MainShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),
             label: '告警/工单',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.smart_toy),
+            label: 'AI助手',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
