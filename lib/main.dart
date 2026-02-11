@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'services/ai_chat_provider.dart';
+import 'screens/ai_assistant_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AIChatProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -11,26 +21,363 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: '监控系统',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromRGBO(39, 99, 255, 1),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MainScreen(),
+    );
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const DevicePlaceholderScreen(),
+    const MonitoringPlaceholderScreen(),
+    const AlarmWorkOrderPlaceholderScreen(),
+    const AIAssistantScreen(),
+    const ProfilePlaceholderScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color.fromRGBO(39, 99, 255, 1),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.view_in_ar),
+            label: '3D 设备',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.monitor),
+            label: '实时监测',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.warning_amber),
+            label: '告警/工单',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.smart_toy),
+            label: 'AI 助手',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: '我的',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Placeholder screens for other tabs
+class DevicePlaceholderScreen extends StatelessWidget {
+  const DevicePlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('3D 设备'),
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.view_in_ar, size: 80, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              '3D 设备视图',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MonitoringPlaceholderScreen extends StatelessWidget {
+  const MonitoringPlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('实时监测'),
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.monitor, size: 80, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              '实时监测仪表盘',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AlarmWorkOrderPlaceholderScreen extends StatelessWidget {
+  const AlarmWorkOrderPlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('告警/工单'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: '告警中心'),
+              Tab(text: '工单列表'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildAlarmTab(context),
+            _buildWorkOrderTab(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlarmTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          '告警示例',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildSampleAlarmCard(context),
+      ],
+    );
+  }
+
+  Widget _buildSampleAlarmCard(BuildContext context) {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: Container(
+              width: 4,
+              height: 50,
+              color: const Color.fromRGBO(240, 68, 56, 1),
+            ),
+            title: const Text('部件过温告警'),
+            subtitle: const Text('电机 A - 温度超过阈值'),
+            trailing: const Text('10:30'),
+          ),
+          // AI Analysis widget would be inserted here
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // Show AI analysis
+                _showAIAnalysisDemo(context);
+              },
+              icon: const Icon(Icons.smart_toy),
+              label: const Text('AI 告警分析'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromRGBO(39, 99, 255, 1),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAIAnalysisDemo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.smart_toy, color: Color.fromRGBO(39, 99, 255, 1)),
+            SizedBox(width: 8),
+            Text('AI 告警分析'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '这里会显示 AI 对告警的分析:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text('• 根因分析\n• 潜在风险\n• 建议措施\n• 预防建议'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('创建工单（带 AI 建议）')),
+              );
+            },
+            child: const Text('创建工单'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkOrderTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          '工单示例',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildSampleWorkOrderCard(context),
+      ],
+    );
+  }
+
+  Widget _buildSampleWorkOrderCard(BuildContext context) {
+    return Card(
+      child: Column(
+        children: [
+          const ListTile(
+            title: Text('工单 #12345'),
+            subtitle: Text('电机 A - 更换冷却风扇'),
+            trailing: Chip(
+              label: Text('处理中'),
+              backgroundColor: Color.fromRGBO(245, 158, 11, 0.2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _showAIWorkOrderDemo(context);
+              },
+              icon: const Icon(Icons.smart_toy),
+              label: const Text('AI 工单建议'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromRGBO(39, 99, 255, 1),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAIWorkOrderDemo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.smart_toy, color: Color.fromRGBO(39, 99, 255, 1)),
+            SizedBox(width: 8),
+            Text('AI 工单建议'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'AI 建议的工单操作:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text('• 立即行动\n• 所需备件\n• 预计耗时\n• 优先级评估'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('应用 AI 建议')),
+              );
+            },
+            child: const Text('应用建议'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfilePlaceholderScreen extends StatelessWidget {
+  const ProfilePlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('我的'),
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person, size: 80, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              '个人设置',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
