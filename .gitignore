@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# AI Configuration - DO NOT COMMIT SENSITIVE DATA
+*.env
+.env.local
+.env.*.local
+config.local.dart
+secrets.dart
+api_keys.dart
