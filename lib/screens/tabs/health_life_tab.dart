@@ -1,27 +1,69 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../mock_data/mock_data.dart';
+import '../../components/common_widgets.dart';
+import '../../services/api_service.dart';
 
 /// 健康寿命 Tab 内容
-class HealthLifeContent extends StatelessWidget {
+class HealthLifeContent extends StatefulWidget {
   final String deviceId;
 
   const HealthLifeContent({super.key, required this.deviceId});
 
   @override
+  State<HealthLifeContent> createState() => _HealthLifeContentState();
+}
+
+class _HealthLifeContentState extends State<HealthLifeContent> {
+  PageState _state = PageState.loading;
+  Map<String, dynamic> _data = const {
+    'overallHI': 0.0,
+    'overallRUL': 0,
+    'rulRange': '-',
+    'trend': 'stable',
+    'components': <dynamic>[],
+    'predictions': <dynamic>[],
+    'suggestions': <dynamic>[],
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final health = await fetchDeviceHealthData(widget.deviceId);
+      if (!mounted) return;
+      setState(() {
+        _data = health;
+        _state = PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = MockData.healthData;
-    final hi = (data['overallHI'] as double);
+    final data = _data;
+    final hi = (data['overallHI'] as num).toDouble();
     final hiPercent = (hi * 100).toInt();
     final hiColor = hi >= 0.8
         ? AppColors.success
         : (hi >= 0.6 ? AppColors.warning : AppColors.danger);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return StateWidget(
+      state: _state,
+      onRetry: _loadData,
+      emptyMessage: '暂无健康数据',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // 设备整体健康概览卡
           Card(
             child: Padding(
@@ -272,6 +314,7 @@ class HealthLifeContent extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
+        ),
       ),
     );
   }

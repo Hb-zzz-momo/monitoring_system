@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/ai_models.dart';
-import '../mock_data/mock_data.dart';
+import 'api_service.dart';
 
 class AiService extends ChangeNotifier {
   final AiConfig config;
@@ -10,6 +10,8 @@ class AiService extends ChangeNotifier {
   final List<TrainingDataItem> _trainingData = [];
   final List<TrainingJob> _trainingJobs = [];
   bool _isLoading = false;
+  List<Map<String, dynamic>> _lastDevices = [];
+  List<Map<String, dynamic>> _lastAlarms = [];
 
   AiService({AiConfig? config}) : config = config ?? AiConfig();
 
@@ -17,7 +19,7 @@ class AiService extends ChangeNotifier {
   List<TrainingDataItem> get trainingData => List.unmodifiable(_trainingData);
   List<TrainingJob> get trainingJobs => List.unmodifiable(_trainingJobs);
   bool get isLoading => _isLoading;
-  bool get isConfigured => config.apiKey.isNotEmpty;
+  bool get isConfigured => config.baseUrl.trim().isNotEmpty && config.model.trim().isNotEmpty;
 
   // ===== 对话功能 =====
 
@@ -28,6 +30,7 @@ class AiService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _ensureContextData();
       if (!isConfigured) {
         // 未配置 API Key 时使用模拟回复
         await Future.delayed(const Duration(milliseconds: 800));
@@ -52,7 +55,7 @@ class AiService extends ChangeNotifier {
 
   /// 调用 OpenAI API
   Future<String> _callOpenAI(String userMessage) async {
-    final systemPrompt = _buildSystemPrompt();
+    final systemPrompt = await _buildSystemPrompt();
 
     final body = jsonEncode({
       'model': config.model,
@@ -64,12 +67,19 @@ class AiService extends ChangeNotifier {
       'max_tokens': config.maxTokens,
     });
 
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    final apiKey = config.apiKey.trim();
+    if (apiKey.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $apiKey';
+    } else if (_isUsingBackendProxy() && (apiClient.token?.isNotEmpty ?? false)) {
+      headers['Authorization'] = 'Bearer ${apiClient.token!}';
+    }
+
     final response = await http.post(
       Uri.parse('${config.baseUrl}/chat/completions'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${config.apiKey}',
-      },
+      headers: headers,
       body: body,
     );
 
@@ -81,9 +91,26 @@ class AiService extends ChangeNotifier {
     }
   }
 
+  bool _isUsingBackendProxy() {
+    final base = config.baseUrl.trim();
+    if (base.isEmpty) return false;
+    return base.startsWith('${apiClient.baseUrl}/v1');
+  }
+
   /// 构建系统提示词（注入设备监测领域知识）
-  String _buildSystemPrompt() {
-    final deviceSummary = MockData.devices
+  Future<void> _ensureContextData() async {
+    try {
+      _lastDevices = await fetchDevices();
+      _lastAlarms = await fetchAlarms();
+    } catch (_) {}
+  }
+
+  Future<String> _buildSystemPrompt() async {
+    if (_lastDevices.isEmpty) {
+      await _ensureContextData();
+    }
+
+    final deviceSummary = _lastDevices
         .map((d) =>
             '${d['name']}: 在线=${d['isOnline']}, 温度=${d['temperature']}°C, '
             '功率=${d['power']}kW, 健康=${d['healthIndex']}')
@@ -117,7 +144,7 @@ $deviceSummary
 
     if (lower.contains('告警') || lower.contains('报警')) {
       return '🔔 **告警分析**\n\n'
-          '当前系统有 ${MockData.alarms.length} 条告警记录。\n\n'
+          '当前系统有 ${_lastAlarms.length} 条告警记录。\n\n'
           '**优先处理建议：**\n'
           '1. 高危告警应在 1 小时内响应\n'
           '2. 中危告警建议 4 小时内处理\n'
@@ -157,91 +184,94 @@ $deviceSummary
 
   // ===== 训练数据管理 =====
 
+  Future<void> _reloadTrainingSamples() async {
+    final samples = await fetchTrainingSamples(limit: 500);
+    _trainingData
+      ..clear()
+      ..addAll(
+        samples.map(
+          (item) => TrainingDataItem(
+            id: (item['id'] as num?)?.toInt(),
+            input: item['input']?.toString() ?? '',
+            expectedOutput: item['expectedOutput']?.toString() ?? '',
+            source: item['source']?.toString() ?? 'manual',
+            createdAt: DateTime.tryParse(item['createdAt']?.toString() ?? '') ?? DateTime.now(),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _reloadTrainingJobs() async {
+    final jobs = await fetchTrainingJobs(limit: 20);
+    _trainingJobs
+      ..clear()
+      ..addAll(
+        jobs.map(
+          (job) => TrainingJob(
+            id: job['id']?.toString() ?? '',
+            status: job['status']?.toString() ?? 'pending',
+            totalSamples: (job['totalSamples'] as num?)?.toInt() ?? 0,
+            processedSamples: (job['processedSamples'] as num?)?.toInt() ?? 0,
+            modelName: job['modelName']?.toString(),
+            createdAt: DateTime.tryParse(job['createdAt']?.toString() ?? '') ?? DateTime.now(),
+          ),
+        ),
+      );
+  }
+
   /// 从设备数据自动生成训练样本
-  void collectDeviceTrainingData() {
-    for (final device in MockData.devices) {
-      final input = '设备 ${device['name']} 温度 ${device['temperature']}°C，'
-          '功率 ${device['power']}kW，健康指数 ${device['healthIndex']}，'
-          '状态：${device['isOnline'] ? '在线' : '离线'}。请分析。';
-
-      final health = device['healthIndex'] as double;
-      String assessment;
-      if (health >= 0.8) {
-        assessment = '运行良好，各项指标正常，建议保持当前维护计划。';
-      } else if (health >= 0.6) {
-        assessment = '需要关注，建议增加巡检频率，预防性维护优先处理。';
-      } else {
-        assessment = '状态堪忧，建议尽快安排全面检修，排查潜在故障隐患。';
-      }
-
-      _trainingData.add(TrainingDataItem(
-        input: input,
-        expectedOutput: assessment,
-        source: 'device',
-      ));
-    }
+  Future<void> collectDeviceTrainingData() async {
+    try {
+      await collectDeviceTrainingSamples();
+      await _reloadTrainingSamples();
+    } catch (_) {}
     notifyListeners();
   }
 
   /// 从告警数据生成训练样本
-  void collectAlarmTrainingData() {
-    for (final alarm in MockData.alarms) {
-      _trainingData.add(TrainingDataItem(
-        input: '告警：${alarm['title']}，级别：${alarm['level']}，'
-            '设备：${alarm['device']}。如何处理？',
-        expectedOutput: '针对${alarm['title']}，建议：\n'
-            '1. 立即检查相关传感器读数\n'
-            '2. 对比历史数据确认是否为误报\n'
-            '3. 根据${alarm['level']}级别启动对应处置流程',
-        source: 'alarm',
-      ));
-    }
+  Future<void> collectAlarmTrainingData() async {
+    try {
+      await collectAlarmTrainingSamples();
+      await _reloadTrainingSamples();
+    } catch (_) {}
     notifyListeners();
   }
 
   /// 手动添加训练数据
-  void addTrainingData(String input, String expectedOutput) {
-    _trainingData.add(TrainingDataItem(
-      input: input,
-      expectedOutput: expectedOutput,
-      source: 'manual',
-    ));
+  Future<void> addTrainingData(String input, String expectedOutput) async {
+    try {
+      await createManualTrainingSample(input: input, expectedOutput: expectedOutput);
+      await _reloadTrainingSamples();
+    } catch (_) {}
     notifyListeners();
   }
 
   /// 删除训练数据
-  void removeTrainingData(int index) {
-    if (index >= 0 && index < _trainingData.length) {
-      _trainingData.removeAt(index);
-      notifyListeners();
-    }
+  Future<void> removeTrainingData(int index) async {
+    if (index < 0 || index >= _trainingData.length) return;
+
+    final sampleId = _trainingData[index].id ?? -1;
+    if (sampleId <= 0) return;
+
+    try {
+      await deleteTrainingSample(sampleId);
+      await _reloadTrainingSamples();
+    } catch (_) {}
+    notifyListeners();
   }
 
   /// 提交训练任务（模拟）
   Future<void> submitTrainingJob() async {
+    if (_trainingData.isEmpty) {
+      await _reloadTrainingSamples();
+    }
     if (_trainingData.isEmpty) return;
 
-    final job = TrainingJob(
-      id: 'job_${DateTime.now().millisecondsSinceEpoch}',
-      status: 'running',
-      totalSamples: _trainingData.length,
-    );
-    _trainingJobs.insert(0, job);
+    try {
+      await startLocalTrainingJob();
+      await _reloadTrainingJobs();
+    } catch (_) {}
     notifyListeners();
-
-    // 模拟训练进度
-    for (int i = 1; i <= _trainingData.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      _trainingJobs[0] = TrainingJob(
-        id: job.id,
-        status: i == _trainingData.length ? 'completed' : 'running',
-        totalSamples: _trainingData.length,
-        processedSamples: i,
-        modelName: i == _trainingData.length ? 'expert-model-v${_trainingJobs.length}' : null,
-        createdAt: job.createdAt,
-      );
-      notifyListeners();
-    }
   }
 
   void clearMessages() {

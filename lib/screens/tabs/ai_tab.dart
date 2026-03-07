@@ -164,7 +164,7 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
           ),
           const SizedBox(height: 4),
           Text(
-            _aiService.isConfigured ? '✅ 已连接 OpenAI' : '⚡ 演示模式（未配置 API Key）',
+            _aiService.isConfigured ? '✅ 已连接 AI API' : '⚡ 演示模式（请配置 Base URL 和模型）',
             style: TextStyle(
               color: _aiService.isConfigured ? AppColors.success : AppColors.warning,
               fontSize: 12,
@@ -567,7 +567,7 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('OpenAI 配置'),
+        title: const Text('AI API 配置'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -577,7 +577,7 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
                 decoration: const InputDecoration(
                   labelText: 'API Key',
                   hintText: 'sk-...',
-                  helperText: '留空则使用演示模式',
+                  helperText: '本地服务可留空（若服务要求鉴权请填写）',
                 ),
                 obscureText: true,
               ),
@@ -591,9 +591,10 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _aiService.config.model,
+                initialValue: _aiService.config.model,
                 decoration: const InputDecoration(labelText: '模型'),
                 items: const [
+                  DropdownMenuItem(value: 'expert-local', child: Text('Expert Local (Trained)')),
                   DropdownMenuItem(value: 'gpt-4o-mini', child: Text('GPT-4o Mini')),
                   DropdownMenuItem(value: 'gpt-4o', child: Text('GPT-4o')),
                   DropdownMenuItem(value: 'gpt-4', child: Text('GPT-4')),
@@ -619,7 +620,7 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    _aiService.isConfigured ? '✅ API Key 已配置' : '⚡ 已切换为演示模式',
+                    _aiService.isConfigured ? '✅ AI API 已配置' : '⚡ 已切换为演示模式',
                   ),
                 ),
               );

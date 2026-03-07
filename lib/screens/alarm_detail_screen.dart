@@ -1,19 +1,91 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../mock_data/mock_data.dart';
+import '../components/common_widgets.dart';
+import '../services/api_service.dart';
+import '../routes/app_routes.dart';
 
-class AlarmDetailScreen extends StatelessWidget {
+class AlarmDetailScreen extends StatefulWidget {
   final String alarmId;
 
   const AlarmDetailScreen({super.key, required this.alarmId});
 
   @override
+  State<AlarmDetailScreen> createState() => _AlarmDetailScreenState();
+}
+
+class _AlarmDetailScreenState extends State<AlarmDetailScreen> {
+  PageState _state = PageState.loading;
+  Map<String, dynamic>? _alarm;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAlarm();
+  }
+
+  Future<void> _loadAlarm() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final alarm = await fetchAlarm(widget.alarmId);
+      if (!mounted) return;
+      setState(() {
+        _alarm = alarm;
+        _state = PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
+
+  Future<void> _markProcessed() async {
+    try {
+      await updateAlarm(widget.alarmId, {'status': '已处理'});
+      await _loadAlarm();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已标记为已处理')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('更新失败，请稍后重试')),
+      );
+    }
+  }
+
+  Future<void> _createWorkOrder() async {
+    try {
+      final workOrder = await createWorkOrderFromAlarm(widget.alarmId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('工单已创建: ${workOrder['id']}')),
+      );
+      Navigator.of(context).pushNamed(
+        AppRoutes.workOrderDetail,
+        arguments: {'orderId': workOrder['id']},
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('生成工单失败，请稍后重试')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final alarm = MockData.alarms.firstWhere(
-      (a) => a['id'] == alarmId,
-      orElse: () => MockData.alarms.first,
-    );
+    final alarm = _alarm;
+    if (alarm == null && _state == PageState.content) {
+      return const SizedBox.shrink();
+    }
+    if (alarm == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('告警详情')),
+        body: StateWidget(state: _state, onRetry: _loadAlarm, child: const SizedBox.shrink()),
+      );
+    }
 
     final color =
         alarm['level'] == 'danger' ? AppColors.danger : AppColors.warning;
@@ -228,7 +300,7 @@ class AlarmDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {},
+                    onPressed: _markProcessed,
                     child: const Text('标记已处理'),
                   ),
                 ),
@@ -236,7 +308,7 @@ class AlarmDetailScreen extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: _createWorkOrder,
                     child: const Text('生成工单'),
                   ),
                 ),

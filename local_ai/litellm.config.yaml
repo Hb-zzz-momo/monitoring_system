@@ -1,0 +1,19 @@
+model_list:
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: ollama/qwen2.5:7b
+      api_base: http://ollama:11434
+
+  - model_name: gpt-4o
+    litellm_params:
+      model: ollama/qwen2.5:14b
+      api_base: http://ollama:11434
+
+  - model_name: expert-local
+    litellm_params:
+      model: openai/expert-local
+      api_base: http://host.docker.internal:8008/v1
+      api_key: local-key
+
+general_settings:
+  master_key: local-key

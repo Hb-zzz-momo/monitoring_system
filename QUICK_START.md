@@ -2,6 +2,22 @@
 
 ## 运行应用
 
+### 一键启动（推荐）
+在项目根目录执行：
+```bash
+start_all.bat
+```
+
+脚本会自动：
+1. 启动后端服务（8000）
+2. 尝试启动本地 AI 服务（8008）
+3. 启动 Flutter Windows 应用
+
+一键停止：
+```bash
+stop_all.bat
+```
+
 ### 1. 安装 Flutter
 如果还没有安装 Flutter, 请访问：https://flutter.dev/docs/get-started/install
 

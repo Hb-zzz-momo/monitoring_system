@@ -18,12 +18,14 @@ class AiMessage {
 
 /// 专家模型训练数据条目
 class TrainingDataItem {
+  final int? id;
   final String input;
   final String expectedOutput;
   final String source; // 'device', 'alarm', 'manual'
   final DateTime createdAt;
 
   TrainingDataItem({
+    this.id,
     required this.input,
     required this.expectedOutput,
     required this.source,
@@ -70,8 +72,8 @@ class AiConfig {
 
   AiConfig({
     this.apiKey = '',
-    this.baseUrl = 'https://api.openai.com/v1',
-    this.model = 'gpt-4o-mini',
+    this.baseUrl = 'http://127.0.0.1:8000/v1',
+    this.model = 'expert-local',
     this.temperature = 0.7,
     this.maxTokens = 2048,
   });

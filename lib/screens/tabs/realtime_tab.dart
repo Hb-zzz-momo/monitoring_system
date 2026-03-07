@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../mock_data/mock_data.dart';
 import '../../components/common_widgets.dart';
+import '../../services/api_service.dart';
 
 /// 监测总览 Tab 内容（嵌入 DeviceDetailShell）
 class RealtimeContent extends StatefulWidget {
@@ -15,11 +17,105 @@ class RealtimeContent extends StatefulWidget {
 
 class _RealtimeContentState extends State<RealtimeContent> {
   String _selectedTimeRange = '30s';
+  MetricsRealtimeConnection? _realtimeConnection;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSub;
+  PageState _state = PageState.loading;
+  Map<String, dynamic> _metrics = const {
+    'temperature': 0.0,
+    'voltage': 0.0,
+    'current': 0.0,
+    'power': 0.0,
+    'energy': 0.0,
+    'delay': 0,
+    'isConnected': false,
+  };
+  List<Map<String, dynamic>> _events = [];
+  List<Map<String, double>> _temperatureTrend = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _startRealtimeStream();
+  }
+
+  @override
+  void dispose() {
+    _realtimeSub?.cancel();
+    _realtimeConnection?.close();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final metrics = await fetchDeviceMetrics(deviceId: widget.deviceId);
+      final events = await fetchRealtimeEvents(deviceId: widget.deviceId);
+      final trend =
+          await fetchMetricHistory('temperature', points: 20, deviceId: widget.deviceId);
+      if (!mounted) return;
+      setState(() {
+        _metrics = metrics;
+        _events = events;
+        _temperatureTrend = trend;
+        _state = PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
+
+  void _startRealtimeStream() {
+    _realtimeConnection = connectMetricsStream(deviceId: widget.deviceId);
+    _realtimeSub = _realtimeConnection!.stream.listen(
+      (payload) {
+        if (!mounted) return;
+        final metrics = payload['metrics'];
+        final events = payload['events'];
+        final trend = payload['trend'];
+        setState(() {
+          if (metrics is Map<String, dynamic>) {
+            _metrics = metrics;
+          }
+          if (events is List) {
+            _events = events
+                .whereType<Map>()
+                .map((item) => item.map(
+                      (key, value) => MapEntry(key.toString(), value),
+                    ))
+                .toList();
+          }
+          if (trend is List) {
+            _temperatureTrend = trend
+                .whereType<Map>()
+                .map((item) {
+                  final map = item.map((key, value) => MapEntry(key.toString(), value));
+                  return {
+                    'x': (map['x'] as num).toDouble(),
+                    'y': (map['y'] as num).toDouble(),
+                  };
+                })
+                .toList();
+          }
+          _state = PageState.content;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {});
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
+    return StateWidget(
+      state: _state,
+      onRetry: _loadData,
+      emptyMessage: '暂无实时数据',
+      child: Column(
+        children: [
         // 顶部状态条（固定）
         Container(
           color: AppColors.card,
@@ -32,7 +128,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Row(
@@ -54,7 +150,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Text('延迟: ${MockData.deviceMetrics['delay']} ms',
+                  Text('延迟: ${_metrics['delay']} ms',
                       style: TextStyle(fontSize: 12, color: AppColors.subText)),
                 ],
               ),
@@ -90,12 +186,12 @@ class _RealtimeContentState extends State<RealtimeContent> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildGridKpiCard('电压', '${MockData.deviceMetrics['voltage']}',
+                        child: _buildGridKpiCard('电压', '${_metrics['voltage']}',
                           'V', Icons.bolt, AppColors.info),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildGridKpiCard('电流', '${MockData.deviceMetrics['current']}',
+                        child: _buildGridKpiCard('电流', '${_metrics['current']}',
                           'A', Icons.flash_on, AppColors.success),
                     ),
                   ],
@@ -104,12 +200,12 @@ class _RealtimeContentState extends State<RealtimeContent> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildGridKpiCard('功率', '${MockData.deviceMetrics['power']}',
+                        child: _buildGridKpiCard('功率', '${_metrics['power']}',
                           'kW', Icons.power, AppColors.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildGridKpiCard('电能', '${MockData.deviceMetrics['energy']}',
+                        child: _buildGridKpiCard('电能', '${_metrics['energy']}',
                           'kWh', Icons.energy_savings_leaf, AppColors.warning),
                     ),
                   ],
@@ -122,6 +218,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
           ),
         ),
       ],
+      ),
     );
   }
 
@@ -151,7 +248,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('${MockData.deviceMetrics['temperature']}',
+                          Text('${_metrics['temperature']}',
                               style: TextStyle(
                                   fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.warning)),
                           const SizedBox(width: 4),
@@ -183,7 +280,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: CustomPaint(painter: _SparklinePainter()),
+                  child: CustomPaint(painter: _SparklinePainter(data: _temperatureTrend)),
                 ),
               ],
             ),
@@ -246,7 +343,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
           children: [
             const Text('最新事件', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            ...MockData.realtimeEvents.map((event) {
+            ..._events.map((event) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
@@ -255,7 +352,7 @@ class _RealtimeContentState extends State<RealtimeContent> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: _getEventColor(event['type']).withOpacity(0.1),
+                        color: _getEventColor(event['type']).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(_getEventIcon(event['icon']),
@@ -328,9 +425,12 @@ class _RealtimeContentState extends State<RealtimeContent> {
 
 /// 迷你趋势线绘制
 class _SparklinePainter extends CustomPainter {
+  final List<Map<String, double>> data;
+
+  _SparklinePainter({required this.data});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final data = MockData.generateChartData('温度', 20);
     if (data.isEmpty) return;
 
     final values = data.map((d) => d['y']!).toList();
@@ -357,5 +457,6 @@ class _SparklinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
+      oldDelegate.data != data;
 }

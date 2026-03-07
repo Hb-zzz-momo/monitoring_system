@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../../theme/app_theme.dart';
-import '../../mock_data/mock_data.dart';
 import '../../routes/app_routes.dart';
+import '../../components/common_widgets.dart';
+import '../../services/api_service.dart';
 
 /// 3D视图 Tab 内容（嵌入 DeviceDetailShell）
 class ThreeDDeviceContent extends StatefulWidget {
@@ -22,11 +23,49 @@ class ThreeDDeviceContent extends StatefulWidget {
 class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
   bool _showDrawer = false;
   Map<String, dynamic>? _selectedComponent;
+  PageState _state = PageState.loading;
+  Map<String, dynamic> _metrics = const {
+    'temperature': 0.0,
+    'voltage': 0.0,
+    'current': 0.0,
+    'power': 0.0,
+  };
+  List<Map<String, dynamic>> _components = [];
+  List<Map<String, dynamic>> _alarms = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final metrics = await fetchDeviceMetrics();
+      final components = await fetchComponents();
+      final alarms = await fetchAlarms();
+      if (!mounted) return;
+      setState(() {
+        _metrics = metrics;
+        _components = components;
+        _alarms = alarms;
+        _state = PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
+    return StateWidget(
+      state: _state,
+      onRetry: _loadData,
+      emptyMessage: '暂无设备数据',
+      child: Stack(
+        children: [
         Column(
           children: [
             // 上半区 3D Viewer（约55%）
@@ -95,12 +134,12 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildKpiCard('温度', '${MockData.deviceMetrics['temperature']}',
+                            child: _buildKpiCard('温度', '${_metrics['temperature']}',
                                 '℃', AppColors.warning),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildKpiCard('功率', '${MockData.deviceMetrics['power']}',
+                            child: _buildKpiCard('功率', '${_metrics['power']}',
                                 'kW', AppColors.primary),
                           ),
                         ],
@@ -110,12 +149,12 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildKpiCard('电流', '${MockData.deviceMetrics['current']}',
+                            child: _buildKpiCard('电流', '${_metrics['current']}',
                                 'A', AppColors.success),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildKpiCard('电压', '${MockData.deviceMetrics['voltage']}',
+                            child: _buildKpiCard('电压', '${_metrics['voltage']}',
                                 'V', AppColors.info),
                           ),
                         ],
@@ -146,13 +185,15 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
             child: _buildDrawer(_selectedComponent!),
           ),
         ],
-      ],
+        ],
+      ),
     );
   }
 
   void _onModuleTap(TapDownDetails details, BuildContext context) {
     // 模拟点击不同部件
-    final components = MockData.components;
+    final components = _components;
+    if (components.isEmpty) return;
     final random = Random();
     final component = components[random.nextInt(components.length)];
     setState(() {
@@ -207,7 +248,7 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
   }
 
   Widget _buildRecentAlarmsCard() {
-    final recentAlarms = MockData.alarms.take(2).toList();
+    final recentAlarms = _alarms.take(2).toList();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

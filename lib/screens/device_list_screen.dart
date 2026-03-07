@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../components/common_widgets.dart';
-import '../mock_data/mock_data.dart';
 import '../routes/app_routes.dart';
+import '../services/api_service.dart';
 
 class DeviceListScreen extends StatefulWidget {
   const DeviceListScreen({super.key});
@@ -14,6 +14,7 @@ class DeviceListScreen extends StatefulWidget {
 class _DeviceListScreenState extends State<DeviceListScreen> {
   PageState _state = PageState.loading;
   String _selectedFilter = '全部';
+  List<Map<String, dynamic>> _devices = [];
 
   @override
   void initState() {
@@ -23,22 +24,31 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
 
   Future<void> _loadData() async {
     setState(() => _state = PageState.loading);
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) setState(() => _state = PageState.content);
+    try {
+      final devices = await fetchDevices();
+      if (!mounted) return;
+      setState(() {
+        _devices = devices;
+        _state = devices.isEmpty ? PageState.empty : PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
   }
 
   List<Map<String, dynamic>> get _filteredDevices {
-    if (_selectedFilter == '全部') return MockData.devices;
+    if (_selectedFilter == '全部') return _devices;
     if (_selectedFilter == '在线') {
-      return MockData.devices.where((d) => d['isOnline'] == true).toList();
+      return _devices.where((d) => d['isOnline'] == true).toList();
     }
     if (_selectedFilter == '离线') {
-      return MockData.devices.where((d) => d['isOnline'] == false).toList();
+      return _devices.where((d) => d['isOnline'] == false).toList();
     }
     if (_selectedFilter == '告警中') {
-      return MockData.devices.where((d) => (d['healthIndex'] as double) < 0.7).toList();
+      return _devices.where((d) => (d['healthIndex'] as double) < 0.7).toList();
     }
-    return MockData.devices;
+    return _devices;
   }
 
   void _showScanDialog() {

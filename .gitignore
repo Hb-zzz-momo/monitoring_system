@@ -46,7 +46,14 @@ app.*.map.json
 
 # Python / Backend
 backend/.venv/
+backend/.venv312/
 backend/__pycache__/
 backend/**/__pycache__/
 backend/*.pyc
 backend/**/*.pyc
+backend/monitoring.db
+
+# Local AI training artifacts
+local_ai/.venv_train/
+local_ai/models/
+local_ai/data/train.jsonl

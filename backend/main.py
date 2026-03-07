@@ -5,7 +5,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import auth, devices, alarms, work_orders, metrics, components
+from replay_engine import sensor_replay_engine
+from routers import auth, devices, alarms, work_orders, metrics, components, ai_proxy, sensors, training, ai_recommendations
 
 app = FastAPI(
     title="设备监测系统 API",
@@ -33,8 +34,22 @@ app.include_router(alarms.router)
 app.include_router(work_orders.router)
 app.include_router(metrics.router)
 app.include_router(components.router)
+app.include_router(ai_proxy.router)
+app.include_router(sensors.router)
+app.include_router(training.router)
+app.include_router(ai_recommendations.router)
 
 
 @app.get("/", tags=["root"])
 def root():
     return {"message": "设备监测系统 API 正常运行", "docs": "/docs"}
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    await sensor_replay_engine.auto_start_if_enabled()
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    await sensor_replay_engine.stop()

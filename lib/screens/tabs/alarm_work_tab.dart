@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../mock_data/mock_data.dart';
 import '../../routes/app_routes.dart';
 import '../../components/common_widgets.dart';
+import '../../services/api_service.dart';
 
 class AlarmWorkTab extends StatefulWidget {
   const AlarmWorkTab({super.key});
@@ -77,9 +77,72 @@ class AlarmCenterView extends StatefulWidget {
 class _AlarmCenterViewState extends State<AlarmCenterView> {
   String _selectedLevel = '全部';
   String _selectedStatus = '进行中';
+  PageState _state = PageState.loading;
+  List<Map<String, dynamic>> _alarms = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAlarms();
+  }
+
+  Future<void> _loadAlarms() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final alarms = await fetchAlarms();
+      if (!mounted) return;
+      setState(() {
+        _alarms = alarms;
+        _state = alarms.isEmpty ? PageState.empty : PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
+
+  Future<void> _markAlarmProcessed(String alarmId) async {
+    try {
+      await updateAlarm(alarmId, {'status': '已处理'});
+      await _loadAlarms();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('告警已标记为已处理')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('更新失败，请稍后重试')),
+      );
+    }
+  }
+
+  Future<void> _createWorkOrder(String alarmId) async {
+    try {
+      final workOrder = await createWorkOrderFromAlarm(alarmId);
+      await _loadAlarms();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('工单已创建: ${workOrder['id']}')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('创建工单失败，请稍后重试')),
+      );
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredAlarms {
-    return MockData.alarms.where((alarm) {
+    return _alarms.where((alarm) {
+      if (_selectedLevel != '全部') {
+        final expectedLevel = _selectedLevel == '提示'
+            ? 'info'
+            : (_selectedLevel == '预警' ? 'warning' : 'danger');
+        if (alarm['level'] != expectedLevel) {
+          return false;
+        }
+      }
       if (_selectedStatus != '全部' &&
           alarm['status'] !=
               (_selectedStatus == '进行中' ? '进行中' : '已处理')) {
@@ -91,8 +154,12 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
+    return StateWidget(
+      state: _state,
+      onRetry: _loadAlarms,
+      emptyMessage: '暂无告警',
+      child: Column(
+        children: [
         // Filter area
         Container(
           color: AppColors.card,
@@ -154,8 +221,8 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
         ),
         const Divider(height: 1),
         // Alarm list
-        Expanded(
-          child: _filteredAlarms.isEmpty
+          Expanded(
+            child: _filteredAlarms.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -176,7 +243,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                     ],
                   ),
                 )
-              : ListView.separated(
+                : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: _filteredAlarms.length,
                   separatorBuilder: (context, index) =>
@@ -186,8 +253,9 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                     return _buildAlarmCard(alarm);
                   },
                 ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -283,7 +351,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                       children: [
                         if (alarm['status'] == '进行中') ...[
                           OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () => _markAlarmProcessed(alarm['id'].toString()),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -298,7 +366,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () => _createWorkOrder(alarm['id'].toString()),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -354,20 +422,47 @@ class WorkOrdersView extends StatefulWidget {
 class _WorkOrdersViewState extends State<WorkOrdersView> {
   String _selectedStatus = '全部';
   String _selectedTime = '近24h';
+  PageState _state = PageState.loading;
+  List<Map<String, dynamic>> _workOrders = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkOrders();
+  }
+
+  Future<void> _loadWorkOrders() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final orders = await fetchWorkOrders();
+      if (!mounted) return;
+      setState(() {
+        _workOrders = orders;
+        _state = orders.isEmpty ? PageState.empty : PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredWorkOrders {
     if (_selectedStatus == '全部') {
-      return MockData.workOrders;
+      return _workOrders;
     }
-    return MockData.workOrders
+    return _workOrders
         .where((wo) => wo['status'] == _selectedStatus)
         .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
+    return StateWidget(
+      state: _state,
+      onRetry: _loadWorkOrders,
+      emptyMessage: '暂无工单',
+      child: Column(
+        children: [
         // Filter area
         Container(
           color: AppColors.card,
@@ -430,8 +525,8 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
         ),
         const Divider(height: 1),
         // Work order list
-        Expanded(
-          child: ListView.separated(
+          Expanded(
+            child: ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: _filteredWorkOrders.length,
             separatorBuilder: (context, index) =>
@@ -440,9 +535,10 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
               final workOrder = _filteredWorkOrders[index];
               return _buildWorkOrderCard(workOrder);
             },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

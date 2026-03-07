@@ -39,6 +39,9 @@ uvicorn main:app --reload
 |--------|--------|------|
 | `JWT_SECRET_KEY` | `change-me-in-production-…` | JWT 签名密钥，**生产环境必须修改** |
 | `CORS_ORIGINS` | `http://localhost:3000,http://localhost:8080` | 允许的跨域来源（逗号分隔） |
+| `LOCAL_TRAIN_COMMAND` | 空 | 本地训练命令（为空时自动尝试项目根目录 `train_local_model.bat`） |
+| `LOCAL_DEPLOY_COMMAND` | 空 | 训练成功后自动执行的部署命令（为空时自动尝试项目根目录 `serve_trained_model.bat`） |
+| `LOCAL_DEPLOY_HEALTH_URL` | `http://127.0.0.1:8008/v1/models` | 自动部署后健康检查地址（返回 2xx 视为成功） |
 
 示例（Linux/macOS）：
 ```bash
@@ -58,6 +61,10 @@ uvicorn main:app
 演示账号：
 - 用户名 `demo` / 密码 `demo123`（操作员）
 - 用户名 `admin` / 密码 `admin123`（管理员）
+
+鉴权规则：
+- 除 `/auth/login` 外，所有接口都需要 `Authorization: Bearer <token>`。
+- 写操作（`PUT`/创建工单/训练管理）默认要求 `admin` 角色。
 
 ### 设备
 
@@ -90,6 +97,54 @@ uvicorn main:app
 | GET | `/metrics` | 实时设备指标（温度/电压/电流/功率等） |
 | GET | `/metrics/events` | 最新实时事件列表 |
 | GET | `/metrics/health` | 健康寿命数据 |
+| GET | `/metrics/devices/{id}` | 单设备实时指标（含 `isSimulated` / `dataSource`） |
+| GET | `/metrics/devices/{id}/history` | 单设备历史曲线（含 `isSimulated` / `dataSource`） |
+| GET | `/metrics/devices/{id}/events` | 单设备事件流（含 `isSimulated` / `dataSource`） |
+| GET | `/metrics/devices/{id}/health` | 单设备健康寿命（含 `isSimulated` / `dataSource`） |
+| WS  | `/metrics/stream?token=...&device_id=...` | 鉴权实时推送流（支持设备过滤） |
+
+说明：当设备尚未接入真实传感器数据时，接口会返回回退数据，并通过 `isSimulated=true` 与 `dataSource=fallback-*` 显式标注。
+
+### 传感器接入
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/sensors/ingest` | 统一传感器数据入口（入库 + 训练样本沉淀 + 实时广播） |
+
+示例请求：
+
+```json
+{
+	"deviceId": "1",
+	"temperature": 43.6,
+	"voltage": 221.2,
+	"current": 14.8,
+	"power": 3.28,
+	"energy": 126.4,
+	"delay": 8,
+	"isConnected": true
+}
+```
+
+### 本地训练
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/ai/training/samples/collect/device` | 从设备数据生成训练样本 |
+| POST | `/ai/training/samples/collect/alarm` | 从告警数据生成训练样本 |
+| POST | `/ai/training/samples` | 手动新增训练样本 |
+| GET  | `/ai/training/samples` | 查询训练样本 |
+| DELETE | `/ai/training/samples/{sample_id}` | 删除指定训练样本 |
+| POST | `/ai/training/export` | 导出 `local_ai/data/train.jsonl` |
+| POST | `/ai/training/jobs/start` | 启动本地训练任务 |
+| GET  | `/ai/training/jobs` | 查询训练任务状态 |
+
+### AI 建议与回写
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/ai/recommendations/devices/{id}` | 生成设备证据化建议（返回证据、置信度） |
+| POST | `/ai/recommendations/devices/{id}?create_work_order=true` | 生成建议并自动回写工单（仅管理员） |
 
 ### 部件
 
@@ -105,8 +160,9 @@ Flutter 前端通过 `lib/services/api_service.dart` 调用后端。
 
 ## 数据存储
 
-当前版本使用**内存数据库**（`database.py`），初始数据与 Flutter 端 mock_data.dart 保持一致。
-重启服务后数据会重置。如需持久化，可将 `database.py` 中的列表替换为 SQLite / PostgreSQL 连接。
+当前版本使用 **SQLite 持久化存储**（`database.py` + `monitoring.db`）。
+首次启动会自动建表并写入初始演示数据，后续重启服务数据不会丢失。
+表结构定义见 `schema.sql`。
 
 ## 目录结构
 
@@ -114,7 +170,8 @@ Flutter 前端通过 `lib/services/api_service.dart` 调用后端。
 backend/
 ├── main.py            # FastAPI 应用入口、CORS 配置、路由注册
 ├── models.py          # Pydantic 数据模型
-├── database.py        # 内存数据存储（初始数据）
+├── database.py        # SQLite 数据访问层（自动建表/初始化数据）
+├── schema.sql         # 持久化数据库表结构
 ├── requirements.txt   # Python 依赖
 ├── routers/
 │   ├── auth.py        # 认证路由
@@ -122,6 +179,11 @@ backend/
 │   ├── alarms.py      # 告警路由
 │   ├── work_orders.py # 工单路由
 │   ├── metrics.py     # 指标路由
-│   └── components.py  # 部件路由
+│   ├── components.py  # 部件路由
+│   ├── sensors.py     # 传感器接入路由
+│   ├── training.py    # 本地训练路由
+│   └── ai_recommendations.py # AI 建议与工单回写路由
+├── security.py        # JWT 鉴权与 RBAC 依赖
+├── realtime_hub.py    # WebSocket 实时广播中心
 └── README.md          # 本文件
 ```

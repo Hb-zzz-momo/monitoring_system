@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../mock_data/mock_data.dart';
+import '../components/common_widgets.dart';
+import '../services/api_service.dart';
 
 class WorkOrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -12,15 +13,75 @@ class WorkOrderDetailScreen extends StatefulWidget {
 }
 
 class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
+  PageState _state = PageState.loading;
+  Map<String, dynamic>? _workOrder;
   final List<Map<String, dynamic>> _checklistItems =
-      List.from(MockData.checklistItems);
+      List.from([
+    {'title': '检查轴承温度', 'description': '使用红外测温仪测量', 'checked': true},
+    {'title': '检查润滑情况', 'description': '确认润滑油充足', 'checked': true},
+    {'title': '检查振动情况', 'description': '使用振动仪测量', 'checked': false},
+    {'title': '更换轴承', 'description': '使用新备件更换', 'checked': false},
+    {'title': '运行测试', 'description': '确认设备正常运行', 'checked': false},
+  ]);
+
+  final List<Map<String, dynamic>> _timeline =
+      List.from([
+    {'title': '工单创建', 'time': '2024-01-10 08:30', 'description': '系统自动创建工单'},
+    {'title': '已接单', 'time': '2024-01-10 09:00', 'description': '已接单'},
+    {'title': '处理中', 'time': '2024-01-10 10:00', 'description': '开始现场检查'},
+  ]);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkOrder();
+  }
+
+  Future<void> _loadWorkOrder() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final workOrder = await fetchWorkOrder(widget.orderId);
+      if (!mounted) return;
+      setState(() {
+        _workOrder = workOrder;
+        _state = PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
+
+  Future<void> _moveNextStep() async {
+    if (_workOrder == null) return;
+    final currentStatus = _workOrder!['status']?.toString() ?? '待处理';
+    final nextStatus = currentStatus == '待处理'
+        ? '处理中'
+        : (currentStatus == '处理中' ? '已完成' : '已完成');
+    try {
+      await updateWorkOrder(widget.orderId, {'status': nextStatus});
+      await _loadWorkOrder();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('状态已更新为$nextStatus')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('更新失败，请稍后重试')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final workOrder = MockData.workOrders.firstWhere(
-      (wo) => wo['id'] == widget.orderId,
-      orElse: () => MockData.workOrders.first,
-    );
+    final workOrder = _workOrder;
+    if (workOrder == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('工单详情')),
+        body: StateWidget(state: _state, onRetry: _loadWorkOrder, child: const SizedBox.shrink()),
+      );
+    }
 
     Color statusColor;
     switch (workOrder['status']) {
@@ -170,7 +231,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Column(
-                              children: MockData.timeline.map((event) {
+                              children: _timeline.map((event) {
                                 return _buildTimelineItem(event);
                               }).toList(),
                             ),
@@ -209,7 +270,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: _moveNextStep,
                     child: const Text('下一步'),
                   ),
                 ),

@@ -88,6 +88,27 @@ class DeviceMetrics(BaseModel):
     isConnected: bool
 
 
+class MetricPoint(BaseModel):
+    x: float
+    y: float
+
+
+class DeviceMetricsResponse(BaseModel):
+    deviceId: str
+    metrics: DeviceMetrics
+    isSimulated: bool
+    dataSource: str
+    timestamp: str
+
+
+class MetricHistoryResponse(BaseModel):
+    deviceId: str
+    metric: str
+    points: List[MetricPoint]
+    isSimulated: bool
+    dataSource: str
+
+
 # ── Realtime Event ────────────────────────────────────────────────────────────
 
 class RealtimeEvent(BaseModel):
@@ -137,3 +158,82 @@ class HealthData(BaseModel):
     components: List[ComponentHealth]
     predictions: List[HealthPrediction]
     suggestions: List[str]
+
+
+class DeviceHealthResponse(BaseModel):
+    deviceId: str
+    health: HealthData
+    isSimulated: bool
+    dataSource: str
+    timestamp: str
+
+
+# ── Sensor Ingest ─────────────────────────────────────────────────────────────
+
+class SensorIngestPayload(BaseModel):
+    deviceId: str
+    timestamp: Optional[str] = None
+    temperature: float
+    voltage: float
+    current: float
+    power: float
+    energy: float
+    delay: int = 0
+    isConnected: bool = True
+
+
+class SensorIngestResponse(BaseModel):
+    success: bool
+    message: str
+    metrics: DeviceMetrics
+
+
+# ── AI Training ───────────────────────────────────────────────────────────────
+
+class TrainingSample(BaseModel):
+    id: int
+    source: str
+    input: str
+    expectedOutput: str
+    createdAt: str
+
+
+class ManualTrainingSampleCreate(BaseModel):
+    input: str
+    expectedOutput: str
+    source: str = "manual"
+
+
+class TrainingCollectResponse(BaseModel):
+    success: bool
+    added: int
+
+
+class TrainingJob(BaseModel):
+    id: str
+    status: str
+    totalSamples: int
+    processedSamples: int
+    modelName: Optional[str] = None
+    message: Optional[str] = None
+    createdAt: str
+
+
+class TrainingJobStartResponse(BaseModel):
+    success: bool
+    job: TrainingJob
+
+
+class AiRecommendationEvidence(BaseModel):
+    type: str
+    title: str
+    value: str
+
+
+class AiRecommendationResponse(BaseModel):
+    deviceId: str
+    summary: str
+    suggestion: str
+    confidence: float
+    evidence: List[AiRecommendationEvidence]
+    createdWorkOrderId: Optional[str] = None

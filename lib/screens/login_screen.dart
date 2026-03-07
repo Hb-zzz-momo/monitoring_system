@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../routes/app_routes.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,8 +35,19 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    // Simulate login
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await login(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+      return;
+    }
 
     if (mounted) {
       setState(() {

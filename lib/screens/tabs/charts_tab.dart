@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../mock_data/mock_data.dart';
+import '../../components/common_widgets.dart';
+import '../../services/api_service.dart';
 
 /// 曲线 Tab 内容
 class ChartsContent extends StatefulWidget {
@@ -17,10 +18,24 @@ class _ChartsContentState extends State<ChartsContent> {
   String _selectedComponent = '整机';
   bool _isPaused = false;
   bool _showDataTable = false;
+  PageState _state = PageState.loading;
+  Map<String, double> _baseValues = {
+    '温度': 42.0,
+    '电压': 220.0,
+    '电流': 15.0,
+    '功率': 3.3,
+  };
+  Map<String, List<Map<String, double>>> _metricSeries = {};
 
   static const _metrics = ['温度', '电压', '电流', '功率'];
   static const _components = ['整机', '主轴承', '电机', 'IGBT模块'];
   static const _metricUnits = {'温度': '℃', '电压': 'V', '电流': 'A', '功率': 'kW'};
+  static const _metricApiNames = {
+    '温度': 'temperature',
+    '电压': 'voltage',
+    '电流': 'current',
+    '功率': 'power',
+  };
   static const _metricColors = {
     '温度': Color(0xFFF59E0B),
     '电压': Color(0xFF2E90FA),
@@ -29,9 +44,60 @@ class _ChartsContentState extends State<ChartsContent> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _loadMetrics();
+  }
+
+  Future<void> _loadMetrics() async {
+    setState(() => _state = PageState.loading);
+    try {
+      final metrics = await fetchDeviceMetrics(deviceId: widget.deviceId);
+      final historyMap = <String, List<Map<String, double>>>{};
+      for (final metric in _metrics) {
+        final apiMetric = _metricApiNames[metric];
+        if (apiMetric == null) continue;
+        historyMap[metric] = await fetchMetricHistory(
+          apiMetric,
+          points: 60,
+          deviceId: widget.deviceId,
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _baseValues = {
+          '温度': (metrics['temperature'] as num?)?.toDouble() ?? 42.0,
+          '电压': (metrics['voltage'] as num?)?.toDouble() ?? 220.0,
+          '电流': (metrics['current'] as num?)?.toDouble() ?? 15.0,
+          '功率': (metrics['power'] as num?)?.toDouble() ?? 3.3,
+        };
+        _metricSeries = historyMap;
+        _state = PageState.content;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _state = PageState.error);
+    }
+  }
+
+  List<Map<String, double>> _getSeries(String metric, int points) {
+    final source = _metricSeries[metric] ?? const <Map<String, double>>[];
+    if (source.isEmpty) {
+      final base = _baseValues[metric] ?? 0;
+      return List.generate(points, (i) => {'x': i.toDouble(), 'y': base});
+    }
+    if (source.length <= points) return source;
+    return source.sublist(source.length - points);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
+    return StateWidget(
+      state: _state,
+      onRetry: _loadMetrics,
+      emptyMessage: '暂无曲线数据',
+      child: Column(
+        children: [
         // 顶部工具栏（固定）
         Container(
           color: AppColors.card,
@@ -138,7 +204,7 @@ class _ChartsContentState extends State<ChartsContent> {
         ),
         const Divider(height: 1),
         // 主图表区
-        Expanded(
+          Expanded(
           child: SingleChildScrollView(
             child: Column(
               children: [
@@ -211,8 +277,9 @@ class _ChartsContentState extends State<ChartsContent> {
               ],
             ),
           ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -222,13 +289,15 @@ class _ChartsContentState extends State<ChartsContent> {
       painter: _LineChartPainter(
         selectedMetrics: _selectedMetrics.toList(),
         metricColors: _metricColors,
+        baseValues: _baseValues,
+        metricSeries: _metricSeries,
       ),
     );
   }
 
   Widget _buildDataTable() {
     final metric = _selectedMetrics.first;
-    final data = MockData.generateChartData(metric, 20);
+    final data = _getSeries(metric, 20);
     final unit = _metricUnits[metric] ?? '';
 
     return Container(
@@ -299,8 +368,25 @@ class _ChartsContentState extends State<ChartsContent> {
 class _LineChartPainter extends CustomPainter {
   final List<String> selectedMetrics;
   final Map<String, Color> metricColors;
+  final Map<String, double> baseValues;
+  final Map<String, List<Map<String, double>>> metricSeries;
 
-  _LineChartPainter({required this.selectedMetrics, required this.metricColors});
+  _LineChartPainter({
+    required this.selectedMetrics,
+    required this.metricColors,
+    required this.baseValues,
+    required this.metricSeries,
+  });
+
+  List<Map<String, double>> _generateSeries(String metric, int points) {
+    final source = metricSeries[metric] ?? const <Map<String, double>>[];
+    if (source.isEmpty) {
+      final base = baseValues[metric] ?? 0;
+      return List.generate(points, (i) => {'x': i.toDouble(), 'y': base});
+    }
+    if (source.length <= points) return source;
+    return source.sublist(source.length - points);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -340,7 +426,7 @@ class _LineChartPainter extends CustomPainter {
 
     // 对每个选中的指标绘制折线
     for (final metric in selectedMetrics) {
-      final data = MockData.generateChartData(metric, 60);
+      final data = _generateSeries(metric, 60);
       if (data.isEmpty) continue;
 
       final values = data.map((d) => d['y']!).toList();
@@ -433,6 +519,8 @@ class _LineChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
-    return oldDelegate.selectedMetrics != selectedMetrics;
+    return oldDelegate.selectedMetrics != selectedMetrics ||
+        oldDelegate.baseValues != baseValues ||
+        oldDelegate.metricSeries != metricSeries;
   }
 }
