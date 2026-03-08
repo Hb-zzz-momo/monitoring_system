@@ -210,14 +210,7 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
                   ),
                 ],
               ),
-              child: SelectableText(
-                message.content,
-                style: TextStyle(
-                  color: isUser ? Colors.white : AppColors.text,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
+              child: _buildMessageContent(message, isUser),
             ),
           ),
           if (isUser) ...[
@@ -230,6 +223,80 @@ class _AiTabState extends State<AiTab> with SingleTickerProviderStateMixin {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildMessageContent(AiMessage message, bool isUser) {
+    if (isUser) {
+      return SelectableText(
+        message.content,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          height: 1.5,
+        ),
+      );
+    }
+
+    final lines = message.content.split('\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map((line) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) {
+          return const SizedBox(height: 6);
+        }
+
+        final isHeading =
+            trimmed.endsWith('分析') || trimmed.endsWith('建议') || trimmed.endsWith('结论');
+        final isBullet = trimmed.startsWith('• ');
+        final isNumbered = RegExp(r'^\d+\.').hasMatch(trimmed);
+
+        if (isBullet || isNumbered) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isBullet ? '• ' : '${trimmed.split('.').first}. ',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    isBullet
+                        ? trimmed.substring(2).trim()
+                        : trimmed.replaceFirst(RegExp(r'^\d+\.'), '').trim(),
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text(
+            trimmed,
+            style: TextStyle(
+              color: isHeading ? AppColors.primary : AppColors.text,
+              fontSize: isHeading ? 15 : 14,
+              fontWeight: isHeading ? FontWeight.w700 : FontWeight.w400,
+              height: 1.5,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

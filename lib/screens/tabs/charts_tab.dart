@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../components/common_widgets.dart';
@@ -27,6 +28,8 @@ class _ChartsContentState extends State<ChartsContent> {
     '功率': 3.3,
   };
   Map<String, List<Map<String, double>>> _metricSeries = {};
+  Timer? _refreshTimer;
+  bool _isRefreshing = false;
 
   static const _metrics = ['温度', '电压', '电流', '功率'];
   static const _components = ['整机', '主轴承', '电机', 'IGBT模块'];
@@ -48,10 +51,31 @@ class _ChartsContentState extends State<ChartsContent> {
   void initState() {
     super.initState();
     _loadMetrics();
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_isPaused) return;
+      _refreshMetrics();
+    });
   }
 
   Future<void> _loadMetrics() async {
     setState(() => _state = PageState.loading);
+    await _refreshMetrics(markReadyOnSuccess: true);
+  }
+
+  Future<void> _refreshMetrics({bool markReadyOnSuccess = false}) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     try {
       final metrics = await fetchDeviceMetrics(deviceId: widget.deviceId);
       final historyMap = <String, List<Map<String, double>>>{};
@@ -73,12 +97,18 @@ class _ChartsContentState extends State<ChartsContent> {
           '功率': (metrics['power'] as num?)?.toDouble() ?? 3.3,
         };
         _metricSeries = historyMap;
-        _state = PageState.content;
+        if (markReadyOnSuccess || _state != PageState.content) {
+          _state = PageState.content;
+        }
       });
     } catch (e) {
-      debugPrint('ChartsContent._loadMetrics error: $e');
+      debugPrint('ChartsContent._refreshMetrics error: $e');
       if (!mounted) return;
-      setState(() => _state = PageState.error);
+      if (markReadyOnSuccess) {
+        setState(() => _state = PageState.error);
+      }
+    } finally {
+      _isRefreshing = false;
     }
   }
 

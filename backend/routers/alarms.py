@@ -34,7 +34,7 @@ def update_alarm(
 @router.post("/{alarm_id}/work-order", response_model=WorkOrder)
 def create_work_order_from_alarm(
     alarm_id: str,
-    _admin_user: dict = Depends(require_admin),
+    _current_user: dict = Depends(get_current_user),
 ):
     work_order = db.create_work_order_from_alarm(alarm_id)
     if work_order:

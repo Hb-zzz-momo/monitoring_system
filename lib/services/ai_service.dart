@@ -36,16 +36,18 @@ class AiService extends ChangeNotifier {
         await Future.delayed(const Duration(milliseconds: 800));
         _messages.add(AiMessage(
           role: 'assistant',
-          content: _getMockResponse(content),
+          content: _toReadableContent(_getMockResponse(content)),
         ));
       } else {
         final response = await _callOpenAI(content);
-        _messages.add(AiMessage(role: 'assistant', content: response));
+        _messages.add(
+          AiMessage(role: 'assistant', content: _toReadableContent(response)),
+        );
       }
     } catch (e) {
       _messages.add(AiMessage(
         role: 'assistant',
-        content: '请求失败: $e\n\n请检查 API Key 和网络设置。',
+        content: _toReadableContent('请求失败: $e\n\n请检查 API Key 和网络设置。'),
       ));
     }
 
@@ -183,6 +185,27 @@ $deviceSummary
         '• 🛠️ 提供维护计划建议\n'
         '• 🤖 训练专家模型\n\n'
         '试试问我：「当前设备温度情况如何？」';
+  }
+
+  String _toReadableContent(String raw) {
+    var text = raw.trim().replaceAll('\r\n', '\n');
+
+    // Remove common markdown control chars for plain-text UI rendering.
+    text = text
+        .replaceAllMapped(RegExp(r'\*\*(.*?)\*\*'), (m) => m.group(1) ?? '')
+        .replaceAllMapped(RegExp(r'^\s*>\s?', multiLine: true), (_) => '提示: ')
+        .replaceAllMapped(RegExp(r'^\s*-\s+', multiLine: true), (_) => '• ')
+        .replaceAll('### ', '')
+        .replaceAll('## ', '')
+        .replaceAll('# ', '');
+
+    // Round very long decimals like 0.925999999999 to 0.926.
+    text = text.replaceAllMapped(
+      RegExp(r'(-?\d+\.\d{3})\d+'),
+      (m) => m.group(1) ?? m.group(0) ?? '',
+    );
+
+    return text;
   }
 
   // ===== 训练数据管理 =====
