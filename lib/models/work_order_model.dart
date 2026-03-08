@@ -8,6 +8,12 @@ class WorkOrderModel {
   /// 工单状态：'待处理'、'处理中'、'已完成'
   final String status;
   final String createdTime;
+
+  /// 最后更新时间
+  final String updatedTime;
+
+  /// 负责人
+  final String assignee;
   final String description;
   final Map<String, dynamic> extra;
 
@@ -19,6 +25,8 @@ class WorkOrderModel {
     required this.status,
     required this.createdTime,
     required this.description,
+    this.updatedTime = '',
+    this.assignee = '',
     this.extra = const {},
   });
 
@@ -32,6 +40,10 @@ class WorkOrderModel {
       createdTime: json['createdTime']?.toString() ??
           json['created_time']?.toString() ??
           '',
+      updatedTime: json['updatedTime']?.toString() ??
+          json['updated_time']?.toString() ??
+          '',
+      assignee: json['assignee']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       extra: Map<String, dynamic>.from(json),
     );
@@ -44,6 +56,8 @@ class WorkOrderModel {
         'component': component,
         'status': status,
         'createdTime': createdTime,
+        'updatedTime': updatedTime,
+        'assignee': assignee,
         'description': description,
       };
 

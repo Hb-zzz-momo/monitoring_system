@@ -30,8 +30,8 @@ class AppRoutes {
       case deviceList:
         return MaterialPageRoute(builder: (_) => const DeviceListScreen());
       case mainShell:
-        final args = settings.arguments as Map<String, dynamic>?;
-        final initialIndex = args?['initialIndex'] ?? 0;
+        final args = settings.arguments as MainShellArgs?;
+        final initialIndex = args?.initialIndex ?? 0;
         return MaterialPageRoute(
           builder: (_) => MainShell(initialIndex: initialIndex),
         );

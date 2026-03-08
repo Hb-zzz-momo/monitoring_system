@@ -11,8 +11,11 @@ class AlarmModel {
   final double currentValue;
   final double threshold;
 
-  /// 告警状态：'未处理'、'已处理' 等
+  /// 告警状态：'进行中'、'已处理' 等
   final String status;
+
+  /// 告警详细描述
+  final String description;
   final Map<String, dynamic> extra;
 
   const AlarmModel({
@@ -25,6 +28,7 @@ class AlarmModel {
     required this.currentValue,
     required this.threshold,
     required this.status,
+    this.description = '',
     this.extra = const {},
   });
 
@@ -38,7 +42,8 @@ class AlarmModel {
       time: json['time']?.toString() ?? '',
       currentValue: (json['currentValue'] as num?)?.toDouble() ?? 0.0,
       threshold: (json['threshold'] as num?)?.toDouble() ?? 0.0,
-      status: json['status']?.toString() ?? '未处理',
+      status: json['status']?.toString() ?? '进行中',
+      description: json['description']?.toString() ?? '',
       extra: Map<String, dynamic>.from(json),
     );
   }
@@ -53,6 +58,7 @@ class AlarmModel {
         'currentValue': currentValue,
         'threshold': threshold,
         'status': status,
+        'description': description,
       };
 
   /// 是否已处理

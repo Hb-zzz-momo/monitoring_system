@@ -5,6 +5,8 @@ import '../../routes/app_routes.dart';
 import '../../routes/route_args.dart';
 import '../../components/common_widgets.dart';
 import '../../services/api_service.dart';
+import '../../models/alarm_model.dart';
+import '../../models/work_order_model.dart';
 
 class AlarmWorkTab extends StatefulWidget {
   const AlarmWorkTab({super.key});
@@ -80,7 +82,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
   String _selectedLevel = '全部';
   String _selectedStatus = '进行中';
   PageState _state = PageState.loading;
-  List<Map<String, dynamic>> _alarms = [];
+  List<AlarmModel> _alarms = [];
 
   @override
   void initState() {
@@ -91,7 +93,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
   Future<void> _loadAlarms() async {
     setState(() => _state = PageState.loading);
     try {
-      final alarms = await fetchAlarms();
+      final alarms = await fetchAlarmModels();
       if (!mounted) return;
       setState(() {
         _alarms = alarms;
@@ -123,11 +125,12 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
 
   Future<void> _createWorkOrder(String alarmId) async {
     try {
-      final workOrder = await createWorkOrderFromAlarm(alarmId);
+      final workOrderData = await createWorkOrderFromAlarm(alarmId);
+      final workOrderId = workOrderData['id']?.toString() ?? '';
       await _loadAlarms();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('工单已创建: ${workOrder['id']}')),
+        SnackBar(content: Text('工单已创建: $workOrderId')),
       );
     } catch (e) {
       debugPrint('AlarmWorkTab._createWorkOrder error: $e');
@@ -138,19 +141,17 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredAlarms {
+  List<AlarmModel> get _filteredAlarms {
     return _alarms.where((alarm) {
       if (_selectedLevel != '全部') {
         final expectedLevel = _selectedLevel == '提示'
             ? 'info'
             : (_selectedLevel == '预警' ? 'warning' : 'danger');
-        if (alarm['level'] != expectedLevel) {
+        if (alarm.level != expectedLevel) {
           return false;
         }
       }
-      if (_selectedStatus != '全部' &&
-          alarm['status'] !=
-              (_selectedStatus == '进行中' ? '进行中' : '已处理')) {
+      if (_selectedStatus != '全部' && alarm.status != _selectedStatus) {
         return false;
       }
       return true;
@@ -296,16 +297,15 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
     );
   }
 
-  Widget _buildAlarmCard(Map<String, dynamic> alarm) {
-    final color =
-        alarm['level'] == 'danger' ? AppColors.danger : AppColors.warning;
+  Widget _buildAlarmCard(AlarmModel alarm) {
+    final color = alarm.isDanger ? AppColors.danger : AppColors.warning;
 
     return Card(
       child: InkWell(
         onTap: () {
           Navigator.of(context).pushNamed(
             AppRoutes.alarmDetail,
-            arguments: AlarmDetailArgs(alarmId: alarm['id'].toString()),
+            arguments: AlarmDetailArgs(alarmId: alarm.id),
           );
         },
         borderRadius: BorderRadius.circular(12),
@@ -330,7 +330,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      alarm['title'],
+                      alarm.title,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -338,7 +338,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${alarm['device']} - ${alarm['component']}',
+                      '${alarm.device} - ${alarm.component}',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.subText,
@@ -346,7 +346,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      alarm['description'],
+                      alarm.description,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.subText,
@@ -355,9 +355,9 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        if (alarm['status'] == '进行中') ...[
+                        if (alarm.status == '进行中') ...[
                           OutlinedButton(
-                            onPressed: () => _markAlarmProcessed(alarm['id'].toString()),
+                            onPressed: () => _markAlarmProcessed(alarm.id),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -372,7 +372,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton(
-                            onPressed: () => _createWorkOrder(alarm['id'].toString()),
+                            onPressed: () => _createWorkOrder(alarm.id),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -396,7 +396,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    alarm['time'],
+                    alarm.time,
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.subText,
@@ -429,7 +429,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
   String _selectedStatus = '全部';
   String _selectedTime = '近24h';
   PageState _state = PageState.loading;
-  List<Map<String, dynamic>> _workOrders = [];
+  List<WorkOrderModel> _workOrders = [];
 
   @override
   void initState() {
@@ -440,7 +440,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
   Future<void> _loadWorkOrders() async {
     setState(() => _state = PageState.loading);
     try {
-      final orders = await fetchWorkOrders();
+      final orders = await fetchWorkOrderModels();
       if (!mounted) return;
       setState(() {
         _workOrders = orders;
@@ -453,12 +453,12 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredWorkOrders {
+  List<WorkOrderModel> get _filteredWorkOrders {
     if (_selectedStatus == '全部') {
       return _workOrders;
     }
     return _workOrders
-        .where((wo) => wo['status'] == _selectedStatus)
+        .where((wo) => wo.status == _selectedStatus)
         .toList();
   }
 
@@ -580,9 +580,9 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
     );
   }
 
-  Widget _buildWorkOrderCard(Map<String, dynamic> workOrder) {
+  Widget _buildWorkOrderCard(WorkOrderModel workOrder) {
     Color statusColor;
-    switch (workOrder['status']) {
+    switch (workOrder.status) {
       case '待处理':
         statusColor = AppColors.warning;
         break;
@@ -601,7 +601,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
         onTap: () {
           Navigator.of(context).pushNamed(
             AppRoutes.workOrderDetail,
-            arguments: WorkOrderDetailArgs(orderId: workOrder['id'].toString()),
+            arguments: WorkOrderDetailArgs(orderId: workOrder.id),
           );
         },
         borderRadius: BorderRadius.circular(12),
@@ -616,7 +616,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                     Row(
                       children: [
                         Text(
-                          workOrder['id'],
+                          workOrder.id,
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -633,7 +633,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            workOrder['status'],
+                            workOrder.status,
                             style: TextStyle(
                               fontSize: 10,
                               color: statusColor,
@@ -645,7 +645,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${workOrder['device']} - ${workOrder['component']}',
+                      '${workOrder.device} - ${workOrder.component}',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.subText,
@@ -653,7 +653,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      workOrder['title'],
+                      workOrder.title,
                       style: const TextStyle(
                         fontSize: 13,
                       ),
@@ -668,7 +668,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          workOrder['assignee'],
+                          workOrder.assignee,
                           style: TextStyle(
                             fontSize: 11,
                             color: AppColors.subText,
@@ -682,7 +682,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '更新: ${workOrder['updatedTime']}',
+                          '更新: ${workOrder.updatedTime}',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppColors.subText,

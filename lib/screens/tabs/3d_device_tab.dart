@@ -5,6 +5,8 @@ import '../../routes/app_routes.dart';
 import '../../routes/route_args.dart';
 import '../../components/common_widgets.dart';
 import '../../services/api_service.dart';
+import '../../models/alarm_model.dart';
+import '../../models/metrics_model.dart';
 
 /// 3D视图 Tab 内容（嵌入 DeviceDetailShell）
 class ThreeDDeviceContent extends StatefulWidget {
@@ -25,14 +27,14 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
   bool _showDrawer = false;
   Map<String, dynamic>? _selectedComponent;
   PageState _state = PageState.loading;
-  Map<String, dynamic> _metrics = const {
-    'temperature': 0.0,
-    'voltage': 0.0,
-    'current': 0.0,
-    'power': 0.0,
-  };
+  MetricsModel _metrics = const MetricsModel(
+    temperature: 0.0,
+    voltage: 0.0,
+    current: 0.0,
+    power: 0.0,
+  );
   List<Map<String, dynamic>> _components = [];
-  List<Map<String, dynamic>> _alarms = [];
+  List<AlarmModel> _alarms = [];
 
   @override
   void initState() {
@@ -43,19 +45,18 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
   Future<void> _loadData() async {
     setState(() => _state = PageState.loading);
     try {
-      final metrics = await fetchDeviceMetrics(deviceId: widget.deviceId);
+      final metrics = await fetchDeviceMetricsModel(deviceId: widget.deviceId);
       final components = await fetchComponents();
-      final alarms = await fetchAlarms();
+      final alarms = await fetchAlarmModels();
       final device = await fetchDevice(widget.deviceId);
       final deviceName = device['name']?.toString() ?? '';
 
       final filteredAlarms = alarms.where((alarm) {
-        final alarmDevice = alarm['device']?.toString() ?? '';
-        if (alarmDevice.isEmpty) {
+        if (alarm.device.isEmpty) {
           return true;
         }
-        return alarmDevice == widget.deviceId ||
-            (deviceName.isNotEmpty && alarmDevice == deviceName);
+        return alarm.device == widget.deviceId ||
+            (deviceName.isNotEmpty && alarm.device == deviceName);
       }).toList();
 
       if (!mounted) return;
@@ -148,12 +149,12 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildKpiCard('温度', '${_metrics['temperature']}',
+                            child: _buildKpiCard('温度', '${_metrics.temperature}',
                                 '℃', AppColors.warning),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildKpiCard('功率', '${_metrics['power']}',
+                            child: _buildKpiCard('功率', '${_metrics.power}',
                                 'kW', AppColors.primary),
                           ),
                         ],
@@ -163,12 +164,12 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildKpiCard('电流', '${_metrics['current']}',
+                            child: _buildKpiCard('电流', '${_metrics.current}',
                                 'A', AppColors.success),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildKpiCard('电压', '${_metrics['voltage']}',
+                            child: _buildKpiCard('电压', '${_metrics.voltage}',
                                 'V', AppColors.info),
                           ),
                         ],
@@ -235,6 +236,7 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
       ),
       child: IconButton(
         icon: Icon(icon, size: 18),
+        // TODO(P2): 实现3D视图工具栏操作（重置视角/爆炸图/全屏）
         onPressed: () {},
         tooltip: tooltip,
         padding: EdgeInsets.zero,
@@ -294,7 +296,7 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                 onTap: () {
                   Navigator.of(context).pushNamed(
                     AppRoutes.alarmDetail,
-                    arguments: AlarmDetailArgs(alarmId: alarm['id'].toString()),
+                    arguments: AlarmDetailArgs(alarmId: alarm.id),
                   );
                 },
                 child: Padding(
@@ -305,7 +307,7 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                         width: 3,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: alarm['level'] == 'danger'
+                          color: alarm.isDanger
                               ? AppColors.danger
                               : AppColors.warning,
                           borderRadius: BorderRadius.circular(2),
@@ -316,11 +318,11 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(alarm['title'],
+                            Text(alarm.title,
                                 style: const TextStyle(
                                     fontSize: 13, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 2),
-                            Text('${alarm['component']} · ${alarm['time']}',
+                            Text('${alarm.component} · ${alarm.time}',
                                 style: TextStyle(fontSize: 11, color: AppColors.subText)),
                           ],
                         ),

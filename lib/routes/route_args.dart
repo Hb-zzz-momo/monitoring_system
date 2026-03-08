@@ -1,3 +1,9 @@
+class MainShellArgs {
+  final int initialIndex;
+
+  const MainShellArgs({this.initialIndex = 0});
+}
+
 class DeviceDetailArgs {
   final String deviceId;
   final String deviceName;
