@@ -626,10 +626,12 @@ def update_work_order(order_id: str, updates: dict[str, Any]) -> Optional[WorkOr
     if not set_parts:
         return get_work_order(order_id)
 
+    now_text = datetime.now().strftime("%Y-%m-%d %H:%M")
+    values.append(now_text)
     values.append(order_id)
     with _get_conn() as conn:
         cursor = conn.execute(
-            f"UPDATE work_orders SET {', '.join(set_parts)}, updated_at = datetime('now') WHERE id = ?",
+            f"UPDATE work_orders SET {', '.join(set_parts)}, updated_time = ?, updated_at = datetime('now') WHERE id = ?",
             values,
         )
         if cursor.rowcount == 0:

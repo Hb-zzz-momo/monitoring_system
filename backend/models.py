@@ -96,6 +96,13 @@ class WorkOrderUpdate(BaseModel):
     description: Optional[str] = None
 
 
+class WorkOrderAttachment(BaseModel):
+    fileName: str
+    fileUrl: str
+    fileSize: int
+    uploadedTime: str
+
+
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
 class DeviceMetrics(BaseModel):

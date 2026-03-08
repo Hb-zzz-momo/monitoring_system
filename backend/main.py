@@ -1,9 +1,11 @@
 """设备监测系统后端 – FastAPI 应用入口"""
 
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from replay_engine import sensor_replay_engine
 from routers import auth, devices, alarms, work_orders, metrics, components, ai_proxy, sensors, training, ai_recommendations
@@ -38,6 +40,10 @@ app.include_router(ai_proxy.router)
 app.include_router(sensors.router)
 app.include_router(training.router)
 app.include_router(ai_recommendations.router)
+
+_uploads_dir = Path(__file__).resolve().parent / "uploads"
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 
 @app.get("/", tags=["root"])

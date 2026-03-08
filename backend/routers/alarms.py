@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from models import Alarm, AlarmUpdate, WorkOrder
 import database as db
-from security import get_current_user, require_admin
+from security import get_current_user
 
 router = APIRouter(prefix="/alarms", tags=["alarms"])
 
@@ -23,7 +23,7 @@ def get_alarm(alarm_id: str, _current_user: dict = Depends(get_current_user)):
 def update_alarm(
     alarm_id: str,
     body: AlarmUpdate,
-    _admin_user: dict = Depends(require_admin),
+    _current_user: dict = Depends(get_current_user),
 ):
     updated = db.update_alarm(alarm_id, body.model_dump(exclude_none=True))
     if updated:

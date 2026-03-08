@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -366,6 +368,46 @@ Future<Map<String, dynamic>> updateWorkOrder(
     String id, Map<String, dynamic> fields) async {
   return await apiClient.put('/work-orders/$id', fields)
       as Map<String, dynamic>;
+}
+
+Future<List<Map<String, dynamic>>> fetchWorkOrderAttachments(String orderId) async {
+  final data = await apiClient.get('/work-orders/$orderId/attachments') as List<dynamic>;
+  return data.cast<Map<String, dynamic>>();
+}
+
+Future<Map<String, dynamic>> uploadWorkOrderAttachment(
+  String orderId,
+  PlatformFile file,
+) async {
+  final token = apiClient.token;
+  if (token == null || token.isEmpty) {
+    throw ApiException(401, '缺少认证令牌');
+  }
+
+  final uri = Uri.parse('${apiClient.baseUrl}/work-orders/$orderId/attachments');
+  final request = http.MultipartRequest('POST', uri)
+    ..headers['Authorization'] = 'Bearer $token';
+
+  if (file.bytes != null) {
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        file.bytes as Uint8List,
+        filename: file.name,
+      ),
+    );
+  } else if (file.path != null && file.path!.isNotEmpty) {
+    request.files.add(
+      await http.MultipartFile.fromPath('file', file.path!, filename: file.name),
+    );
+  } else {
+    throw ApiException(400, '无效文件，无法上传');
+  }
+
+  final streamed = await request.send();
+  final response = await http.Response.fromStream(streamed);
+  final parsed = await apiClient._handleResponse(response);
+  return parsed as Map<String, dynamic>;
 }
 
 // ── Metrics ───────────────────────────────────────────────────────────────────

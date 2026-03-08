@@ -54,7 +54,7 @@ extension _AiDialogs on _AiTabState {
           ElevatedButton(
             onPressed: () {
               _aiService.config.apiKey = _apiKeyController.text.trim();
-              setState(() {});
+              _onServiceUpdate();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

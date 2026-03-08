@@ -233,6 +233,11 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _closeDrawer() {
+    if (!mounted) return;
+    setState(() => _showDrawer = false);
+  }
+
   Future<void> _handleToolbarAction(String action) async {
     if (action == '重置') {
       setState(() {

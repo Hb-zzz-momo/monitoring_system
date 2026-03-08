@@ -47,7 +47,7 @@ extension _ThreeDDrawer on _ThreeDDeviceContentState {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () => setState(() => _showDrawer = false),
+                    onPressed: _closeDrawer,
                   ),
                 ],
               ),
@@ -144,7 +144,7 @@ extension _ThreeDDrawer on _ThreeDDeviceContentState {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        setState(() => _showDrawer = false);
+                        _closeDrawer();
                         widget.onViewCharts?.call();
                       },
                       child: const Text('查看曲线'),
