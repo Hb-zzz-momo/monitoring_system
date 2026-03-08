@@ -63,4 +63,11 @@ def login(body: LoginRequest):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
     token = create_access_token(body.username, user["role"])
-    return LoginResponse(token=token, username=body.username, role=user["role"])
+    return LoginResponse(
+        token=token,
+        username=body.username,
+        role=user["role"],
+        displayName=user.get("display_name"),
+        email=user.get("email"),
+        phone=user.get("phone"),
+    )

@@ -13,6 +13,9 @@ class LoginResponse(BaseModel):
     token: str
     username: str
     role: str
+    displayName: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):
