@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../components/common_widgets.dart';
 import '../routes/app_routes.dart';
 import '../routes/route_args.dart';
 import '../services/api_service.dart';
+import '../models/device_model.dart';
 
 class DeviceListScreen extends StatefulWidget {
   const DeviceListScreen({super.key});
@@ -15,7 +17,7 @@ class DeviceListScreen extends StatefulWidget {
 class _DeviceListScreenState extends State<DeviceListScreen> {
   PageState _state = PageState.loading;
   String _selectedFilter = '全部';
-  List<Map<String, dynamic>> _devices = [];
+  List<DeviceModel> _devices = [];
 
   @override
   void initState() {
@@ -26,28 +28,29 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   Future<void> _loadData() async {
     setState(() => _state = PageState.loading);
     try {
-      final devices = await fetchDevices();
+      final devices = await fetchDeviceModels();
       if (!mounted) return;
       setState(() {
         _devices = devices;
         _state = devices.isEmpty ? PageState.empty : PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('DeviceListScreen._loadData error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
   }
 
-  List<Map<String, dynamic>> get _filteredDevices {
+  List<DeviceModel> get _filteredDevices {
     if (_selectedFilter == '全部') return _devices;
     if (_selectedFilter == '在线') {
-      return _devices.where((d) => d['isOnline'] == true).toList();
+      return _devices.where((d) => d.isOnline).toList();
     }
     if (_selectedFilter == '离线') {
-      return _devices.where((d) => d['isOnline'] == false).toList();
+      return _devices.where((d) => !d.isOnline).toList();
     }
     if (_selectedFilter == '告警中') {
-      return _devices.where((d) => (d['healthIndex'] as double) < 0.7).toList();
+      return _devices.where((d) => d.healthIndex < 0.7).toList();
     }
     return _devices;
   }
@@ -130,8 +133,16 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
         ),
         title: const Text('设备'),
         actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.search),
+            // TODO(P2): 实现设备搜索功能
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            // TODO(P2): 实现高级筛选弹窗
+            onPressed: () {},
+          ),
         ],
       ),
       body: StateWidget(
@@ -197,8 +208,8 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     );
   }
 
-  Widget _buildDeviceCard(Map<String, dynamic> device) {
-    final hi = (device['healthIndex'] as double);
+  Widget _buildDeviceCard(DeviceModel device) {
+    final hi = device.healthIndex;
     final hiPercent = (hi * 100).toInt();
     final hiColor = hi >= 0.8 ? AppColors.success : (hi >= 0.6 ? AppColors.warning : AppColors.danger);
 
@@ -208,8 +219,8 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
           Navigator.of(context).pushNamed(
             AppRoutes.deviceDetail,
             arguments: DeviceDetailArgs(
-              deviceId: device['id'].toString(),
-              deviceName: device['name'].toString(),
+              deviceId: device.id,
+              deviceName: device.name,
             ),
           );
         },
@@ -221,24 +232,24 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
             children: [
               Row(
                 children: [
-                  StatusDot(isOnline: device['isOnline']),
+                  StatusDot(isOnline: device.isOnline),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(device['name'],
+                    child: Text(device.name,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   ),
                   const Icon(Icons.chevron_right),
                 ],
               ),
               const SizedBox(height: 4),
-              Text('最后更新: ${device['lastUpdate']}',
+              Text('最后更新: ${device.lastSeen ?? '-'}',
                   style: TextStyle(fontSize: 12, color: AppColors.subText)),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _buildMetric('温度', '${device['temperature']}', '℃')),
+                  Expanded(child: _buildMetric('温度', device.temperature > 0 ? '${device.temperature}' : '-', '℃')),
                   Container(width: 1, height: 32, color: AppColors.divider),
-                  Expanded(child: _buildMetric('功率', '${device['power']}', 'kW')),
+                  Expanded(child: _buildMetric('功率', device.power > 0 ? '${device.power}' : '-', 'kW')),
                   Container(width: 1, height: 32, color: AppColors.divider),
                   Expanded(
                     child: Column(

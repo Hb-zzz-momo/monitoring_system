@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../components/common_widgets.dart';
@@ -74,7 +75,8 @@ class _ChartsContentState extends State<ChartsContent> {
         _metricSeries = historyMap;
         _state = PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ChartsContent._loadMetrics error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
@@ -187,12 +189,14 @@ class _ChartsContentState extends State<ChartsContent> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.zoom_out_map, size: 20),
+                    // TODO(P2): 实现图表缩放重置
                     onPressed: () {},
                     tooltip: '重置缩放',
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   ),
                   IconButton(
                     icon: const Icon(Icons.photo_camera_outlined, size: 20),
+                    // TODO(P2): 实现图表截图导出
                     onPressed: () {},
                     tooltip: '截图',
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),

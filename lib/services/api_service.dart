@@ -4,6 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'session_storage.dart';
+import '../models/device_model.dart';
+import '../models/alarm_model.dart';
+import '../models/work_order_model.dart';
+import '../models/metrics_model.dart';
 
 /// Base URL for the backend API server.
 /// • Local development : http://localhost:8000
@@ -254,8 +258,20 @@ Future<List<Map<String, dynamic>>> fetchDevices() async {
   return data.cast<Map<String, dynamic>>();
 }
 
+/// Typed wrapper: returns [DeviceModel] list.
+Future<List<DeviceModel>> fetchDeviceModels() async {
+  final raw = await fetchDevices();
+  return raw.map(DeviceModel.fromJson).toList();
+}
+
 Future<Map<String, dynamic>> fetchDevice(String id) async {
   return await apiClient.get('/devices/$id') as Map<String, dynamic>;
+}
+
+/// Typed wrapper: returns a single [DeviceModel].
+Future<DeviceModel> fetchDeviceModel(String id) async {
+  final raw = await fetchDevice(id);
+  return DeviceModel.fromJson(raw);
 }
 
 Future<Map<String, dynamic>> updateDevice(
@@ -270,8 +286,20 @@ Future<List<Map<String, dynamic>>> fetchAlarms() async {
   return data.cast<Map<String, dynamic>>();
 }
 
+/// Typed wrapper: returns [AlarmModel] list.
+Future<List<AlarmModel>> fetchAlarmModels() async {
+  final raw = await fetchAlarms();
+  return raw.map(AlarmModel.fromJson).toList();
+}
+
 Future<Map<String, dynamic>> fetchAlarm(String id) async {
   return await apiClient.get('/alarms/$id') as Map<String, dynamic>;
+}
+
+/// Typed wrapper: returns a single [AlarmModel].
+Future<AlarmModel> fetchAlarmModel(String id) async {
+  final raw = await fetchAlarm(id);
+  return AlarmModel.fromJson(raw);
 }
 
 Future<Map<String, dynamic>> updateAlarm(
@@ -291,8 +319,20 @@ Future<List<Map<String, dynamic>>> fetchWorkOrders() async {
   return data.cast<Map<String, dynamic>>();
 }
 
+/// Typed wrapper: returns [WorkOrderModel] list.
+Future<List<WorkOrderModel>> fetchWorkOrderModels() async {
+  final raw = await fetchWorkOrders();
+  return raw.map(WorkOrderModel.fromJson).toList();
+}
+
 Future<Map<String, dynamic>> fetchWorkOrder(String id) async {
   return await apiClient.get('/work-orders/$id') as Map<String, dynamic>;
+}
+
+/// Typed wrapper: returns a single [WorkOrderModel].
+Future<WorkOrderModel> fetchWorkOrderModel(String id) async {
+  final raw = await fetchWorkOrder(id);
+  return WorkOrderModel.fromJson(raw);
 }
 
 Future<Map<String, dynamic>> updateWorkOrder(
@@ -313,6 +353,12 @@ Future<Map<String, dynamic>> fetchDeviceMetrics({String? deviceId}) async {
     }
   }
   return await apiClient.get('/metrics') as Map<String, dynamic>;
+}
+
+/// Typed wrapper: returns a [MetricsModel] for the given device.
+Future<MetricsModel> fetchDeviceMetricsModel({String? deviceId}) async {
+  final raw = await fetchDeviceMetrics(deviceId: deviceId);
+  return MetricsModel.fromJson(raw);
 }
 
 Future<List<Map<String, dynamic>>> fetchRealtimeEvents({String? deviceId}) async {
@@ -372,6 +418,12 @@ Future<Map<String, dynamic>> fetchDeviceHealthData(String deviceId) async {
     return health;
   }
   return await apiClient.get('/metrics/health') as Map<String, dynamic>;
+}
+
+/// Typed wrapper: returns a [HealthModel] for the given device.
+Future<HealthModel> fetchDeviceHealthModel(String deviceId) async {
+  final raw = await fetchDeviceHealthData(deviceId);
+  return HealthModel.fromJson(raw);
 }
 
 Future<List<Map<String, double>>> fetchMetricHistory(

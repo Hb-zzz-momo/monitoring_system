@@ -65,6 +65,7 @@ class _DeviceDetailShellState extends State<DeviceDetailShell>
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
+            // TODO(P2): 实现设备信息、解绑、导出数据功能
             onSelected: (value) {},
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'info', child: Text('设备信息')),

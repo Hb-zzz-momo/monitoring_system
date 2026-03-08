@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -64,7 +65,8 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
         _alarms = filteredAlarms;
         _state = PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ThreeDDeviceContent._loadData error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
@@ -495,6 +497,7 @@ class _ThreeDDeviceContentState extends State<ThreeDDeviceContent> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
+                      // TODO(P2): 实现从3D视图直接创建工单功能
                       onPressed: () {},
                       child: const Text('创建工单'),
                     ),

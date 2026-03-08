@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -96,7 +97,8 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
         _alarms = alarms;
         _state = alarms.isEmpty ? PageState.empty : PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('AlarmWorkTab._loadAlarms error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
@@ -110,7 +112,8 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('告警已标记为已处理')),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('AlarmWorkTab._markAlarmProcessed error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('更新失败，请稍后重试')),
@@ -126,7 +129,8 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('工单已创建: ${workOrder['id']}')),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('AlarmWorkTab._createWorkOrder error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('创建工单失败，请稍后重试')),
@@ -213,6 +217,7 @@ class _AlarmCenterViewState extends State<AlarmCenterView> {
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.filter_list),
+                    // TODO(P2): 实现告警高级筛选
                     onPressed: () {},
                   ),
                 ],
@@ -441,7 +446,8 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
         _workOrders = orders;
         _state = orders.isEmpty ? PageState.empty : PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('WorkOrderTab._loadWorkOrders error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
@@ -517,6 +523,7 @@ class _WorkOrdersViewState extends State<WorkOrdersView> {
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.search),
+                    // TODO(P2): 实现工单搜索功能
                     onPressed: () {},
                   ),
                 ],

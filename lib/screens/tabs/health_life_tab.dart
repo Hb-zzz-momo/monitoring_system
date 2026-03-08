@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../components/common_widgets.dart';
@@ -40,7 +41,8 @@ class _HealthLifeContentState extends State<HealthLifeContent> {
         _data = health;
         _state = PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('HealthLifeContent._loadData error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
@@ -49,7 +51,7 @@ class _HealthLifeContentState extends State<HealthLifeContent> {
   @override
   Widget build(BuildContext context) {
     final data = _data;
-    final hi = (data['overallHI'] as num).toDouble();
+    final hi = (data['overallHI'] as num?)?.toDouble() ?? 0.0;
     final hiPercent = (hi * 100).toInt();
     final hiColor = hi >= 0.8
         ? AppColors.success

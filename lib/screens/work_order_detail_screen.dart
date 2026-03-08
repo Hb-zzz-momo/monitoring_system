@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../components/common_widgets.dart';
 import '../services/api_service.dart';
+import '../models/work_order_model.dart';
 
 class WorkOrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -14,7 +16,7 @@ class WorkOrderDetailScreen extends StatefulWidget {
 
 class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   PageState _state = PageState.loading;
-  Map<String, dynamic>? _workOrder;
+  WorkOrderModel? _workOrder;
   final List<Map<String, dynamic>> _checklistItems =
       List.from([
     {'title': '检查轴承温度', 'description': '使用红外测温仪测量', 'checked': true},
@@ -40,24 +42,25 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   Future<void> _loadWorkOrder() async {
     setState(() => _state = PageState.loading);
     try {
-      final workOrder = await fetchWorkOrder(widget.orderId);
+      final raw = await fetchWorkOrder(widget.orderId);
       if (!mounted) return;
       setState(() {
-        _workOrder = workOrder;
+        _workOrder = WorkOrderModel.fromJson(raw);
         _state = PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('WorkOrderDetailScreen._loadWorkOrder error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
   }
 
   Future<void> _moveNextStep() async {
-    if (_workOrder == null) return;
-    final currentStatus = _workOrder!['status']?.toString() ?? '待处理';
-    final nextStatus = currentStatus == '待处理'
+    final current = _workOrder;
+    if (current == null) return;
+    final nextStatus = current.isPending
         ? '处理中'
-        : (currentStatus == '处理中' ? '已完成' : '已完成');
+        : (current.status == '处理中' ? '已完成' : '已完成');
     try {
       await updateWorkOrder(widget.orderId, {'status': nextStatus});
       await _loadWorkOrder();
@@ -65,13 +68,17 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('状态已更新为$nextStatus')),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('WorkOrderDetailScreen._moveNextStep error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('更新失败，请稍后重试')),
       );
     }
   }
+
+  /// Returns [value] if non-empty, otherwise '-'.
+  static String _orDash(String value) => value.isEmpty ? '-' : value;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +91,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
     }
 
     Color statusColor;
-    switch (workOrder['status']) {
+    switch (workOrder.status) {
       case '待处理':
         statusColor = AppColors.warning;
         break;
@@ -121,7 +128,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  workOrder['id'],
+                                  _orDash(workOrder.id),
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -138,7 +145,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  workOrder['status'],
+                                  _orDash(workOrder.status),
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: statusColor,
@@ -149,15 +156,15 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildInfoRow('标题', workOrder['title']),
+                          _buildInfoRow('标题', _orDash(workOrder.title)),
                           const SizedBox(height: 8),
-                          _buildInfoRow('设备', workOrder['device']),
+                          _buildInfoRow('设备', _orDash(workOrder.device)),
                           const SizedBox(height: 8),
-                          _buildInfoRow('部件', workOrder['component']),
+                          _buildInfoRow('部件', _orDash(workOrder.component)),
                           const SizedBox(height: 8),
-                          _buildInfoRow('创建时间', workOrder['createdTime']),
+                          _buildInfoRow('创建时间', _orDash(workOrder.createdTime)),
                           const SizedBox(height: 8),
-                          _buildInfoRow('描述', workOrder['description']),
+                          _buildInfoRow('描述', _orDash(workOrder.description)),
                         ],
                       ),
                     ),
@@ -262,6 +269,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
+                    // TODO(P2): 实现添加备注功能（弹出输入框并提交到后端）
                     onPressed: () {},
                     child: const Text('添加备注'),
                   ),

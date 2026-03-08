@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../components/common_widgets.dart';
@@ -60,7 +61,8 @@ class _RealtimeContentState extends State<RealtimeContent> {
         _temperatureTrend = trend;
         _state = PageState.content;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('RealtimeContent._loadData error: $e');
       if (!mounted) return;
       setState(() => _state = PageState.error);
     }
