@@ -64,7 +64,8 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     return baseList.where((d) {
       return d.id.toLowerCase().contains(query) ||
           d.name.toLowerCase().contains(query) ||
-          d.component.toLowerCase().contains(query);
+          d.type.toLowerCase().contains(query) ||
+          d.location.toLowerCase().contains(query);
     }).toList();
   }
 

@@ -10,6 +10,7 @@ import '../models/work_order_model.dart';
 import '../models/metrics_model.dart';
 import '../models/component_model.dart';
 import '../models/realtime_event_model.dart';
+import '../models/realtime_stream_payload_model.dart';
 
 /// Base URL for the backend API server.
 /// • Local development : http://localhost:8000
@@ -407,7 +408,7 @@ Future<List<RealtimeEventModel>> fetchRealtimeEventModels({String? deviceId}) as
 
 class MetricsRealtimeConnection {
   final WebSocketChannel _channel;
-  final Stream<Map<String, dynamic>> stream;
+  final Stream<RealtimeStreamPayloadModel> stream;
 
   MetricsRealtimeConnection(this._channel, this.stream);
 
@@ -424,14 +425,17 @@ MetricsRealtimeConnection connectMetricsStream({String? deviceId}) {
   final stream = channel.stream
       .map((event) {
         if (event is String) {
-          return jsonDecode(event) as Map<String, dynamic>;
+          return RealtimeStreamPayloadModel.fromJson(
+            jsonDecode(event) as Map<String, dynamic>,
+          );
         }
         if (event is List<int>) {
-          return jsonDecode(utf8.decode(event)) as Map<String, dynamic>;
+          return RealtimeStreamPayloadModel.fromJson(
+            jsonDecode(utf8.decode(event)) as Map<String, dynamic>,
+          );
         }
-        return <String, dynamic>{};
+        return const RealtimeStreamPayloadModel();
       })
-      .where((event) => event.isNotEmpty)
       .asBroadcastStream();
 
   return MetricsRealtimeConnection(channel, stream);

@@ -7,6 +7,7 @@ import '../../components/common_widgets.dart';
 import '../../services/api_service.dart';
 import '../../models/metrics_model.dart';
 import '../../models/realtime_event_model.dart';
+import '../../models/realtime_stream_payload_model.dart';
 
 /// 监测总览 Tab 内容（嵌入 DeviceDetailShell）
 class RealtimeContent extends StatefulWidget {
@@ -21,7 +22,7 @@ class RealtimeContent extends StatefulWidget {
 class _RealtimeContentState extends State<RealtimeContent> {
   String _selectedTimeRange = '30s';
   MetricsRealtimeConnection? _realtimeConnection;
-  StreamSubscription<Map<String, dynamic>>? _realtimeSub;
+  StreamSubscription<RealtimeStreamPayloadModel>? _realtimeSub;
   PageState _state = PageState.loading;
   MetricsModel _metrics = const MetricsModel(
     temperature: 0.0,
@@ -75,31 +76,15 @@ class _RealtimeContentState extends State<RealtimeContent> {
     _realtimeSub = _realtimeConnection!.stream.listen(
       (payload) {
         if (!mounted) return;
-        final metrics = payload['metrics'];
-        final events = payload['events'];
-        final trend = payload['trend'];
         setState(() {
-          if (metrics is Map<String, dynamic>) {
-            _metrics = MetricsModel.fromJson(metrics);
+          if (payload.metrics != null) {
+            _metrics = payload.metrics!;
           }
-          if (events is List) {
-            _events = events
-                .whereType<Map>()
-                .map((item) => item.map((key, value) => MapEntry(key.toString(), value)))
-                .map(RealtimeEventModel.fromJson)
-                .toList();
+          if (payload.events.isNotEmpty) {
+            _events = payload.events;
           }
-          if (trend is List) {
-            _temperatureTrend = trend
-                .whereType<Map>()
-                .map((item) {
-                  final map = item.map((key, value) => MapEntry(key.toString(), value));
-                  return {
-                    'x': (map['x'] as num).toDouble(),
-                    'y': (map['y'] as num).toDouble(),
-                  };
-                })
-                .toList();
+          if (payload.temperatureTrend.isNotEmpty) {
+            _temperatureTrend = payload.temperatureTrend;
           }
           _state = PageState.content;
         });
